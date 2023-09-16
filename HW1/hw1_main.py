@@ -32,7 +32,7 @@ class MainWindow(Qt.QMainWindow):
         Qt.QMainWindow.__init__(self, parent)
         
         ''' Step 1: Initialize the Qt window '''
-        self.setWindowTitle("COSC 6344 Visualization")
+        self.setWindowTitle("COSC 6344 Visualization - Assignment 1, Seren Lowy")
         self.resize(1000,self.height())
         self.frame = Qt.QFrame() # Create a main window frame to add ui widgets
         self.mainLayout = Qt.QHBoxLayout()  # Set layout - Lines up widgets horizontally
@@ -130,10 +130,6 @@ class MainWindow(Qt.QMainWindow):
         self.qt_color_scheme.addItem("Heat")
         self.qt_color_scheme.addItem("Gray")
 
-        '''
-        TODO: add the color scheme item for BWR and Heatmap
-        '''
-
         self.qt_color_scheme.currentIndexChanged.connect(self.select_color_scheme)
         groupBox_layout.addWidget(self.qt_color_scheme)
         
@@ -148,32 +144,28 @@ class MainWindow(Qt.QMainWindow):
         self.qt_threshold = Qt.QDoubleSpinBox()
         groupBox_layout.addWidget(self.qt_threshold)
         
-        '''
-        TODO: Add the "Show Iso-Contour" button
-        (hint: check the Open and Browser button above to see how it's done)
-        connect the button's click to the self.extract_isocontour function
-        '''
-
-
+        '''Add the "Show Iso-Contour" button'''
+        self.qt_show_isocontour_button = Qt.QPushButton('Show 1 isoContour')
+        self.qt_show_isocontour_button.clicked.connect(self.extract_isocontour)
+        self.qt_show_isocontour_button.show()
+        groupBox_layout.addWidget(self.qt_show_isocontour_button)
         
-        ''' 
-        TODO: Add spinbox for number of contours selection (and label it too)
-        (hint: check the spinbox for scalar threshold selection)
-        should be named "self.qt_kcontours"
-        '''
+        ''' Add spinbox for number of contours selection (and label it too)'''
+        groupBox_layout.addWidget(Qt.QLabel("Select the number of isocontours:"))
+        self.qt_kcontours = Qt.QDoubleSpinBox()
+        groupBox_layout.addWidget(self.qt_kcontours)
 
-
-
-        '''
-        TODO: Add the "Show K Iso-Contours" button
-        connect the button's click to the self.extract_k_isocontours function
-        '''
-
+        '''Add the "Show K Iso-Contours" button'''
+        self.qt_show_k_isocontour_button = Qt.QPushButton('Show k isoContours')
+        self.qt_show_k_isocontour_button.clicked.connect(self.extract_k_isocontours)
+        self.qt_show_k_isocontour_button.show()
+        groupBox_layout.addWidget(self.qt_show_k_isocontour_button)
         
-        '''
-        TODO: Add the "export iso contours" button
-        connect the button's click to the self.exportLines function
-        '''
+        '''Add the "export iso contours" button'''
+        self.qt_export_isocontour_button = Qt.QPushButton('Export isoContours')
+        self.qt_export_isocontour_button.clicked.connect(self.exportLines)
+        self.qt_export_isocontour_button.show()
+        groupBox_layout.addWidget(self.qt_export_isocontour_button)
 
       
         ''' Add the Reset Camera button '''
@@ -263,9 +255,15 @@ class MainWindow(Qt.QMainWindow):
         elif self.vtk_reader.IsFilePolyData():
             self.show_popup_message('The input file is the vtk poly data!')
 
-             # Get the scalar field and update the value ranges 
+            # Get the scalar field and update the value ranges 
             scalar_field = "s" # Assume there is a scalar field named "s" in the vtk file
-            min_scalar,max_scalar = self.vtk_reader.GetPolyDataOutput().GetPointData().GetArray(scalar_field).GetRange()
+            scalar_field_array = self.vtk_reader.GetPolyDataOutput().GetPointData().GetArray(scalar_field)
+            
+            # Get categorical data array
+            if not scalar_field_array:
+                scalar_field_array = self.vtk_reader.GetPolyDataOutput().GetCellData().GetArray(scalar_field)
+                
+            min_scalar,max_scalar = scalar_field_array.GetRange()
             point_data = self.vtk_reader.GetPolyDataOutput().GetPointData()
             point_data.SetActiveScalars(scalar_field)
             self.qt_min_lable.setText("Min Scalar:"+str(min_scalar))
@@ -310,81 +308,69 @@ class MainWindow(Qt.QMainWindow):
         self.camera = camera
         
     '''
-    Assignment 2 Task 3.1
-    Complete code where TODO is commented!
+    Assignment 1 Task 4.1
     '''
     def extract_isocontour(self):
         # Delete the previous iso-contour
         if hasattr(self, 'vtk_contour_actor'):
             self.ren.RemoveActor(self.vtk_contour_actor)
             
-        ''' 
-        TODO: Create iso-contour here with vtkContourFilter
-        get the input data with "self.vtk_reader.GetOutput()"
-        get the the user input threshold value with "self.qt_threshold.value()"
-        '''
-
+        #Create iso-contour here with vtkContourFilter
+        self.contour_filter = vtk.vtkContourFilter()
+        self.contour_filter.SetInputConnection(self.vtk_reader.GetOutputPort())
+        self.contour_filter.SetValue(0, self.qt_threshold.value())
         
-        ''' 
-        TODO: Create a mapper for the extract contour geometry here
-        '''
+        # Create a mapper for the extract contour geometry here
+        self.vtk_contour_mapper = vtk.vtkPolyDataMapper()
+        self.vtk_contour_mapper.SetInputConnection(self.contour_filter.GetOutputPort())
        
         #Update contour actor   
         self.vtk_contour_actor = vtk.vtkActor()
 
-        ''' TODO: set the mapper for this actor using the above contour mapper here '''
-
+        # set the mapper for this actor using the above contour mapper here
+        self.vtk_contour_actor.SetMapper(self.vtk_contour_mapper)
 
         # The following set the color and thickness of the contours
         colors = vtk.vtkNamedColors()
         self.vtk_contour_actor.GetProperty().SetColor(colors.GetColor3d("Black"))
         self.vtk_contour_actor.GetProperty().SetLineWidth(2)
 
-        '''
-        TODO: add the actor for the contours here
-        hint: the render window is "self.ren"
-        '''
-
+        # Add the actor for the contours here
+        self.ren.AddActor(self.vtk_contour_actor)
         
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
         
     '''
-    Assignment 2 Task 3.2
-    Complete code where TODO is commented!
+    Assignment 1 Task 4.2
     '''
     def extract_k_isocontours(self):
         # Delete the previous iso-contours
         if hasattr(self, 'vtk_k_contour_actor'):
             self.ren.RemoveActor(self.vtk_k_contour_actor)
             
-        ''' 
-        TODO: Create iso-contour here with vtkContourFilter
-        get the the user input number of contour lines with "self.qt_kcontours.value()"
-        The scalar data range can be obtained using: "scalar_range = self.vtk_reader.GetOutput().GetScalarRange()"
-        '''
-
+        #Create iso-contour here with vtkContourFilter
+        self.k_contour_filter = vtk.vtkContourFilter()
+        self.k_contour_filter.SetInputConnection(self.vtk_reader.GetOutputPort())
+        self.k_contour_filter.GenerateValues(int(self.qt_kcontours.value()), self.vtk_reader.GetOutput().GetScalarRange())
         
-        ''' 
-        TODO: Create a mapper for the extract contour geometry here
-        '''
+        # Create a mapper for the extract contour geometry here
+        self.vtk_k_contour_mapper = vtk.vtkPolyDataMapper()
+        self.vtk_k_contour_mapper.SetInputConnection(self.k_contour_filter.GetOutputPort())
 
-           
         #Update contour actor   
         self.vtk_k_contour_actor = vtk.vtkActor()
 
-        ''' TODO: set the mapper for this actor using the above contour mapper here '''
-
+        # set the mapper for this actor using the above contour mapper here
+        self.vtk_k_contour_actor.SetMapper(self.vtk_k_contour_mapper)
 
         # The following set the color and thickness of the contours
         colors = vtk.vtkNamedColors()
         self.vtk_k_contour_actor.GetProperty().SetColor(colors.GetColor3d("Yellow"))
         self.vtk_k_contour_actor.GetProperty().SetLineWidth(2)
 
-        '''
-        TODO: add the actor for the contours here
-        hint: the render window is "self.ren"
-        '''
+         # Add the actor for the contours here
+        self.ren.AddActor(self.vtk_k_contour_actor)
         
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
@@ -401,6 +387,10 @@ class MainWindow(Qt.QMainWindow):
         self.vtkWidget.GetRenderWindow().Render()
         
     def add_color_legend(self):
+        # Remove previous color legend if there is
+        if hasattr(self, 'color_legend'):
+            self.ren.RemoveActor(self.color_legend)
+    
         # Add scalar bar
         self.color_legend = vtk.vtkScalarBarActor()
         self.color_legend.SetLookupTable(self.vtk_poly_mapper.GetLookupTable())
@@ -423,15 +413,7 @@ class MainWindow(Qt.QMainWindow):
         pass
 
 '''
-    Assignment 2 Task 2:
-    Complete code where TODO is commented!
-    
-    Create a color lookup table by using three different color map schemes
-        @input: colorScheme = 0,1 or 2
-                lut - vtkLookupTable
-    References: 
-        https://lorensen.github.io/VTKExamples/site/Python/VisualizationAlgorithms/DisplacementPlot/
-        https://lorensen.github.io/VTKExamples/site/Python/Visualization/AssignCellColorsFromLUT/
+    Assignment 2 Task 2
 '''
 ### Please see the file hw1_2.py
       
