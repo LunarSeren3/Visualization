@@ -227,7 +227,7 @@ class MainWindow(Qt.QMainWindow):
             self.qt_max_lable.setText("Max Scalar:"+str(max_scalar))
             self.qt_threshold.setValue((min_scalar+max_scalar)/2)
             
-            self.scalar_range = self.vtk_reader.GetOutput().GetScalarRange()
+            self.scalar_range = (min_scalar, max_scalar)
             
             # Set data for the poly data mapper.
             self.vtk_poly_mapper.SetInputData(vtk_geometry.GetOutput()) # You can also use .SetInputConnection and .GetOutputPort() here
@@ -236,7 +236,10 @@ class MainWindow(Qt.QMainWindow):
             self.color_resolution = 256
             self.lut = getColorTable(self.color_resolution, 
                                      self.color_scale_functions[self.color_scheme])
+                                     
+            
             self.vtk_poly_mapper.SetScalarModeToUsePointData()
+            
             self.vtk_poly_mapper.SetLookupTable(self.lut)
             self.vtk_poly_mapper.SetScalarRange(min_scalar, max_scalar)
             self.vtk_poly_mapper.SelectColorArray(scalar_field);
@@ -259,22 +262,30 @@ class MainWindow(Qt.QMainWindow):
             scalar_field = "s" # Assume there is a scalar field named "s" in the vtk file
             scalar_field_array = self.vtk_reader.GetPolyDataOutput().GetPointData().GetArray(scalar_field)
             
-            # Get categorical data array
-            if not scalar_field_array:
-                scalar_field_array = self.vtk_reader.GetPolyDataOutput().GetCellData().GetArray(scalar_field)
+            # Check for categorical data array
+            if scalar_field_array:
+                self.vtk_poly_mapper.SetScalarModeToUsePointData()
+                point_data = self.vtk_reader.GetPolyDataOutput().GetPointData()
+                point_data.SetActiveScalars(scalar_field)
+            else:
+                cell_data = self.vtk_reader.GetPolyDataOutput().GetCellData()
+                scalar_field_array = cell_data.GetArray(scalar_field)
+                cell_data.SetActiveScalars(scalar_field)
                 
-            min_scalar,max_scalar = scalar_field_array.GetRange()
-            point_data = self.vtk_reader.GetPolyDataOutput().GetPointData()
-            point_data.SetActiveScalars(scalar_field)
+                # Set scalar mode to use cell data if the dataset is categorical!
+                self.vtk_poly_mapper.SetScalarModeToUseCellData()
+                
+            min_scalar, max_scalar = scalar_field_array.GetRange()
+            
             self.qt_min_lable.setText("Min Scalar:"+str(min_scalar))
             self.qt_max_lable.setText("Max Scalar:"+str(max_scalar))
             self.qt_threshold.setValue((min_scalar+max_scalar)/2)
             
-            self.scalar_range = self.vtk_reader.GetPolyDataOutput().GetScalarRange()
+            self.scalar_range = (min_scalar, max_scalar)
             
             print(self.scalar_range)
             
-            # Set data for the poly data mapper.
+            # Set data for the poly data mapper
             self.vtk_poly_mapper.SetInputConnection(self.vtk_reader.GetOutputPort()) # You can also use .SetInputConnection and .GetOutputPort() here
             
             #Create vtk color lookup table and use it for the color mapping
@@ -282,7 +293,6 @@ class MainWindow(Qt.QMainWindow):
             self.lut = getColorTable(self.color_resolution, 
                                      self.color_scale_functions[self.color_scheme])
             
-            self.vtk_poly_mapper.SetScalarModeToUsePointData()
             self.vtk_poly_mapper.SetLookupTable(self.lut)
             self.vtk_poly_mapper.SetScalarRange(min_scalar, max_scalar)
             self.vtk_poly_mapper.SelectColorArray(scalar_field);
