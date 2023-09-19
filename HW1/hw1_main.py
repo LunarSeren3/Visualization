@@ -1,6 +1,14 @@
 #!/usr/bin/python
 
 '''
+    Name: Seren Lowy
+    
+    The main script for the HW1 VTK windowed application. Adapted from provided skeleton code.
+    
+    Sources: 
+    [1] assignment sample code
+    [3] own work
+    
     Load the unstructured/structured grid data with the given file name (and directory) 
     and compute and visualize the iso-contours with the given iso-value.
     
@@ -16,19 +24,18 @@ import math
 
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from hw1_2 import getColorTable, rainbow_scale, blue_white_red_scale, heat_scale, gray_scale
-
+from hw1_2 import getColorTable, rainbow_scale, blue_white_red_scale, heat_scale, gray_scale, black, yellow
+from hw1_3 import category_scale
 
 '''
     The Qt MainWindow class
     A vtk widget and the ui controls will be added to this main window
 '''
-class MainWindow(Qt.QMainWindow):
-    
+class MainWindow(Qt.QMainWindow):   # [1] 
     # Define a palette of color scale functions from hw1_2.py
-    color_scale_functions = [rainbow_scale, blue_white_red_scale, heat_scale, gray_scale]
+    color_scale_functions = [rainbow_scale, blue_white_red_scale, heat_scale, gray_scale, category_scale]
 
-    def __init__(self, parent = None):
+    def __init__(self, parent = None): # [1] 
         Qt.QMainWindow.__init__(self, parent)
         
         ''' Step 1: Initialize the Qt window '''
@@ -57,7 +64,7 @@ class MainWindow(Qt.QMainWindow):
         # The controls will be added here
         self.add_controls()
         
-    def init_vtk_widget(self):
+    def init_vtk_widget(self): # [1] 
         vtk.vtkObject.GlobalWarningDisplayOff() #Disable vtkOutputWindow
         
         # Create the graphics structure. The renderer renders into the render
@@ -96,7 +103,7 @@ class MainWindow(Qt.QMainWindow):
         Implement the GUI interface elements
         Complete code where TODO is commented!
     '''
-    def add_controls(self):
+    def add_controls(self): # [1, 3]
         groupBox = Qt.QGroupBox("Iso-Contour Extraction") # Use a group box to group controls
         groupBox_layout = Qt.QVBoxLayout() #lines up the controls vertically
         groupBox.setLayout(groupBox_layout) 
@@ -129,6 +136,7 @@ class MainWindow(Qt.QMainWindow):
         self.qt_color_scheme.addItem("BlueWhiteRed")
         self.qt_color_scheme.addItem("Heat")
         self.qt_color_scheme.addItem("Gray")
+        self.qt_color_scheme.addItem("Category")
 
         self.qt_color_scheme.currentIndexChanged.connect(self.select_color_scheme)
         groupBox_layout.addWidget(self.qt_color_scheme)
@@ -174,7 +182,7 @@ class MainWindow(Qt.QMainWindow):
         self.qt_reset_camera_button.show()
         self.right_panel_layout.addWidget(self.qt_reset_camera_button)
 
-    def reset_camera(self):
+    def reset_camera(self): # [1]
         self.camera.SetPosition(self.initial_camera_position)
         self.camera.SetFocalPoint(self.initial_camera_focal_point)
         self.camera.SetViewUp(self.initial_camera_view_up)
@@ -182,7 +190,7 @@ class MainWindow(Qt.QMainWindow):
         self.vtkWidget.GetRenderWindow().Render()
 
         
-    def on_file_browser_clicked(self):
+    def on_file_browser_clicked(self): # [1]
         dlg = Qt.QFileDialog()
         dlg.setFileMode(Qt.QFileDialog.AnyFile)
         dlg.setNameFilter("VTK files (*.vtk)")
@@ -191,7 +199,7 @@ class MainWindow(Qt.QMainWindow):
             filenames = dlg.selectedFiles()
             self.qt_file_name.setText(filenames[0])
     
-    def open_vtk_file(self):
+    def open_vtk_file(self): # [1]
         '''Read and verify the vtk input file '''
         input_file_name = self.qt_file_name.text()
         
@@ -255,14 +263,14 @@ class MainWindow(Qt.QMainWindow):
             self.ren.ResetCamera()
             self.vtkWidget.GetRenderWindow().Render()
             
-        elif self.vtk_reader.IsFilePolyData():
+        elif self.vtk_reader.IsFilePolyData(): # [1, 3]
             self.show_popup_message('The input file is the vtk poly data!')
 
             # Get the scalar field and update the value ranges 
             scalar_field = "s" # Assume there is a scalar field named "s" in the vtk file
             scalar_field_array = self.vtk_reader.GetPolyDataOutput().GetPointData().GetArray(scalar_field)
             
-            # Check for categorical data array
+            # Check for categorical data array (CHANGED by Seren)
             if scalar_field_array:
                 self.vtk_poly_mapper.SetScalarModeToUsePointData()
                 point_data = self.vtk_reader.GetPolyDataOutput().GetPointData()
@@ -320,7 +328,7 @@ class MainWindow(Qt.QMainWindow):
     '''
     Assignment 1 Task 4.1
     '''
-    def extract_isocontour(self):
+    def extract_isocontour(self): # [1, 3]
         # Delete the previous iso-contour
         if hasattr(self, 'vtk_contour_actor'):
             self.ren.RemoveActor(self.vtk_contour_actor)
@@ -342,7 +350,7 @@ class MainWindow(Qt.QMainWindow):
 
         # The following set the color and thickness of the contours
         colors = vtk.vtkNamedColors()
-        self.vtk_contour_actor.GetProperty().SetColor(colors.GetColor3d("Black"))
+        self.vtk_contour_actor.GetProperty().SetColor(black)
         self.vtk_contour_actor.GetProperty().SetLineWidth(2)
 
         # Add the actor for the contours here
@@ -354,7 +362,7 @@ class MainWindow(Qt.QMainWindow):
     '''
     Assignment 1 Task 4.2
     '''
-    def extract_k_isocontours(self):
+    def extract_k_isocontours(self): # [1, 3]
         # Delete the previous iso-contours
         if hasattr(self, 'vtk_k_contour_actor'):
             self.ren.RemoveActor(self.vtk_k_contour_actor)
@@ -376,7 +384,7 @@ class MainWindow(Qt.QMainWindow):
 
         # The following set the color and thickness of the contours
         colors = vtk.vtkNamedColors()
-        self.vtk_k_contour_actor.GetProperty().SetColor(colors.GetColor3d("Yellow"))
+        self.vtk_k_contour_actor.GetProperty().SetColor(yellow)
         self.vtk_k_contour_actor.GetProperty().SetLineWidth(2)
 
          # Add the actor for the contours here
@@ -428,7 +436,7 @@ class MainWindow(Qt.QMainWindow):
 ### Please see the file hw1_2.py
       
 
-if __name__ == "__main__":
+if __name__ == "__main__": # [1]
     app = Qt.QApplication(sys.argv)
     window = MainWindow()
     sys.exit(app.exec_())
