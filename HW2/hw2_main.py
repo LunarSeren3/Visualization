@@ -24,7 +24,7 @@ class MainWindow(Qt.QMainWindow):
         Qt.QMainWindow.__init__(self, parent)
         
         ''' Step 1: Initialize the Qt window '''
-        self.setWindowTitle("COSC 6344 Visualization YOUR NAME")
+        self.setWindowTitle("COSC 6344 Visualization, Assignment 2, Seren Lowy")
         self.resize(1000,self.height())
         self.frame = Qt.QFrame() # Create a main window frame to add ui widgets
         self.mainLayout = Qt.QHBoxLayout()  # Set layout - Lines up widgets horizontally
