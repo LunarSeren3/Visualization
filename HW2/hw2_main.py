@@ -160,7 +160,7 @@ class MainWindow(Qt.QMainWindow):
         self.ui_isoSurf_checkbox.toggled.connect(self.on_checkbox_change)
         self.ui_iso_threshold = Qt.QDoubleSpinBox()
         hbox.addWidget(self.ui_iso_threshold)
-        # Connect to self.on_iso_threshold_spinbox_change
+        self.ui_iso_threshold.valueChanged.connect(self.on_iso_threshold_spinbox_change)
 
         ''' Add the Show Iso-Surface button '''
         self.ui_show_iso_button = Qt.QPushButton('Show')
@@ -293,8 +293,13 @@ class MainWindow(Qt.QMainWindow):
 
         # You probably need to remove additional actors below...
             
-        # Setup dynamic range controls
+        # Setup full scalar range
         self.scalar_range = [self.reader.GetOutput().GetScalarRange()[0], self.reader.GetOutput().GetScalarRange()[1]]
+        
+        self.ui_min_label.setText("Min Scalar:"+str(self.scalar_range[0]))
+        self.ui_max_label.setText("Max Scalar:"+str(self.scalar_range[1]))
+        
+        # Setup dynamic scalar range
         self.dynamic_min_scalar = self.scalar_range[0]
         self.dynamic_max_scalar = self.scalar_range[1]
         
@@ -305,11 +310,6 @@ class MainWindow(Qt.QMainWindow):
         self.ui_max_range.setValue(self.dynamic_max_scalar)
         
         self.fix_dynamic_range_inner_bounds()
-        
-        self.ui_iso_threshold.setValue((self.dynamic_min_scalar+self.dynamic_max_scalar)/2)
-        
-        self.ui_min_label.setText("Min Scalar:"+str(self.dynamic_min_scalar))
-        self.ui_max_label.setText("Max Scalar:"+str(self.dynamic_max_scalar))
         
         #Update the lookup table
         # YOU NEED TO UPDATE THE FOLLOWING RANGE BASED ON THE LOADED DATA!!!!
@@ -323,6 +323,8 @@ class MainWindow(Qt.QMainWindow):
                 
         # set the range for the iso-surface spinner
         self.ui_iso_threshold.setRange(self.dynamic_min_scalar,self.dynamic_max_scalar)
+        self.iso_threshold_scalar = (self.dynamic_min_scalar+self.dynamic_max_scalar)/2
+        self.ui_iso_threshold.setValue(self.iso_threshold_scalar)
        
         # set the range for the XY cut plane range 
         self.ui_xslider.setRange(0, self.dim[0]-1)
@@ -439,9 +441,8 @@ class MainWindow(Qt.QMainWindow):
     ''''''
      
 
-    '''TODO(Optional): While the cutplane function below is complete, it does not make use of the two spinboxes for the min and max range value
-        You may want to hook the two to the SetTableRange
-        (otherwise you will have to hardcode the table range to show the correct cut planes data for the cylinder dataset)'''
+    ''' Cut Planes functions
+    '''
     def on_zslider_change(self, value):
         self.label_zslider.setText("Z index:"+str(self.ui_zslider.value()))
         current_zID = int(self.ui_zslider.value())
@@ -452,11 +453,7 @@ class MainWindow(Qt.QMainWindow):
             
             # Re-render the screen
             self.vtkWidget.GetRenderWindow().Render() 
-         
-    '''
-        Assignment 2 Cut Planes Task 
-        TODO: Complete the yslider and xslider implementation, check the above completed on_zslider_change() as reference
-    '''
+
     def on_yslider_change(self, value):
         self.label_yslider.setText("Y index:"+str(self.ui_yslider.value()))
         current_yID = int(self.ui_yslider.value())
@@ -490,8 +487,7 @@ class MainWindow(Qt.QMainWindow):
         self.dynamic_min_scalar = value
         self.fix_dynamic_range_inner_bounds()
         
-        # Update label and range state
-        self.ui_min_label.setText("Min Scalar:"+str(self.dynamic_min_scalar))
+        # Update range state
         self.bwLut.SetTableRange(self.dynamic_min_scalar, self.dynamic_max_scalar/2.)
         
         # Re-render the screen
@@ -502,9 +498,15 @@ class MainWindow(Qt.QMainWindow):
         self.dynamic_max_scalar = value
         self.fix_dynamic_range_inner_bounds()
         
-        # Update label and range state
-        self.ui_max_label.setText("Max Scalar:"+str(self.dynamic_max_scalar))
+        # Update range state
         self.bwLut.SetTableRange(self.dynamic_min_scalar, self.dynamic_max_scalar/2.)
+        
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
+        
+    def on_iso_threshold_spinbox_change(self, value):
+        # Receive changed value
+        self.iso_threshold_scalar = value
         
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
