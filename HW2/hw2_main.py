@@ -311,6 +311,10 @@ class MainWindow(Qt.QMainWindow):
         self.ui_iso_threshold.setRange(self.scalar_range[0],self.scalar_range[1])
        
         # set the range for the XY cut plane range 
+        self.ui_xslider.setRange(0, self.dim[0]-1)
+        
+        ''' Seren Lowy: added these lines '''
+        self.ui_yslider.setRange(0, self.dim[1]-1)
         self.ui_zslider.setRange(0, self.dim[2]-1)
 
 
@@ -347,6 +351,87 @@ class MainWindow(Qt.QMainWindow):
        
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
+        
+    '''Seren Lowy added these functions'''
+    def update_xy_plane(self, current_zID):
+        self.xy_plane.SetDisplayExtent(0, self.dim[0], 0, self.dim[1], current_zID, current_zID) # Z
+        
+    def update_xz_plane(self, current_yID):
+        self.xz_plane.SetDisplayExtent(0, self.dim[0], current_yID, current_yID, 0, self.dim[2]) # Y
+    
+    def update_yz_plane(self, current_xID):
+        self.yz_plane.SetDisplayExtent(current_xID, current_xID, 0, self.dim[1], 0, self.dim[2]) # Y
+    
+    def add_xy_plane(self):
+        xy_plane_Colors = vtk.vtkImageMapToColors()
+        xy_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
+        
+        # Update the table range based on the range controls
+        self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+        
+        xy_plane_Colors.SetLookupTable(self.bwLut)
+        xy_plane_Colors.Update()
+    
+        if hasattr(self, 'xy_plane'):
+            self.ren.RemoveActor(self.xy_plane)
+
+        self.xy_plane = vtk.vtkImageActor()
+        self.xy_plane.GetMapper().SetInputConnection(xy_plane_Colors.GetOutputPort())
+        current_zID = int(self.ui_zslider.value())
+        self.update_xy_plane(current_zID)
+        
+        self.ren.AddActor(self.xy_plane)
+        
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
+        
+    def add_xz_plane(self):
+        xz_plane_Colors = vtk.vtkImageMapToColors()
+        xz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
+        
+        # Update the table range based on the range controls
+        self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+        
+        xz_plane_Colors.SetLookupTable(self.bwLut)
+        xz_plane_Colors.Update()
+    
+        if hasattr(self, 'xz_plane'):
+            self.ren.RemoveActor(self.xz_plane)
+
+        self.xz_plane = vtk.vtkImageActor()
+        self.xz_plane.GetMapper().SetInputConnection(xz_plane_Colors.GetOutputPort())
+        current_yID = int(self.ui_yslider.value())
+        self.update_xz_plane(current_yID)
+        
+        self.ren.AddActor(self.xz_plane)
+        
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
+        
+    def add_yz_plane(self):
+        # Initialize the color mapping for the cut plane
+        yz_plane_Colors = vtk.vtkImageMapToColors()
+        yz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
+        
+        # Update the table range based on the range controls
+        self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+        
+        yz_plane_Colors.SetLookupTable(self.bwLut)
+        yz_plane_Colors.Update()
+    
+        if hasattr(self, 'yz_plane'):
+            self.ren.RemoveActor(self.yz_plane)
+
+        self.yz_plane = vtk.vtkImageActor()
+        self.yz_plane.GetMapper().SetInputConnection(yz_plane_Colors.GetOutputPort())
+        current_xID = int(self.ui_xslider.value())
+        self.update_yz_plane(current_xID)
+        
+        self.ren.AddActor(self.yz_plane)
+        
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
+    ''''''
      
 
     '''TODO(Optional): While the cutplane function below is complete, it does not make use of the two spinboxes for the min and max range value
@@ -356,25 +441,9 @@ class MainWindow(Qt.QMainWindow):
         self.label_zslider.setText("Z index:"+str(self.ui_zslider.value()))
         current_zID = int(self.ui_zslider.value())
         
-        if self.ui_xy_plane_checkbox.isChecked() == True:           
-            xy_plane_Colors = vtk.vtkImageMapToColors()
-            xy_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
-            
-            # Update the table range based on the range controls
-            self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
-            
-            xy_plane_Colors.SetLookupTable(self.bwLut)
-            xy_plane_Colors.Update()
-            
-            if hasattr(self, 'xy_plane'):
-                self.ren.RemoveActor(self.xy_plane)
-          
-    
-            self.xy_plane = vtk.vtkImageActor()
-            self.xy_plane.GetMapper().SetInputConnection(xy_plane_Colors.GetOutputPort())
-            self.xy_plane.SetDisplayExtent(0, self.dim[0], 0, self.dim[1], current_zID, current_zID) # Z
-            
-            self.ren.AddActor(self.xy_plane)
+        if self.ui_xy_plane_checkbox.isChecked() == True:            
+            # Change plane location
+            self.update_xy_plane(current_zID)
             
             # Re-render the screen
             self.vtkWidget.GetRenderWindow().Render() 
@@ -387,25 +456,9 @@ class MainWindow(Qt.QMainWindow):
         self.label_yslider.setText("Y index:"+str(self.ui_yslider.value()))
         current_yID = int(self.ui_yslider.value())
         
-        if self.ui_xy_plane_checkbox.isChecked() == True:           
-            xz_plane_Colors = vtk.vtkImageMapToColors()
-            xz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
-            
-            # Update the table range based on the range controls
-            self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
-            
-            xz_plane_Colors.SetLookupTable(self.bwLut)
-            xz_plane_Colors.Update()
-            
-            if hasattr(self, 'xz_plane'):
-                self.ren.RemoveActor(self.xz_plane)
-          
-    
-            self.xz_plane = vtk.vtkImageActor()
-            self.xz_plane.GetMapper().SetInputConnection(xz_plane_Colors.GetOutputPort())
-            self.xz_plane.SetDisplayExtent(0, self.dim[0], current_yID, current_yID, 0, self.dim[2]) # y
-            
-            self.ren.AddActor(self.xz_plane)
+        if self.ui_xz_plane_checkbox.isChecked() == True:           
+            # Change plane location
+            self.update_xz_plane(current_yID)
             
             # Re-render the screen
             self.vtkWidget.GetRenderWindow().Render() 
@@ -414,25 +467,9 @@ class MainWindow(Qt.QMainWindow):
         self.label_xslider.setText("X index:"+str(self.ui_xslider.value()))
         current_xID = int(self.ui_xslider.value())
         
-        if self.ui_xy_plane_checkbox.isChecked() == True:           
-            yz_plane_Colors = vtk.vtkImageMapToColors()
-            yz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
-            
-            # Update the table range based on the range controls
-            self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
-            
-            yz_plane_Colors.SetLookupTable(self.bwLut)
-            yz_plane_Colors.Update()
-            
-            if hasattr(self, 'yz_plane'):
-                self.ren.RemoveActor(self.yz_plane)
-          
-    
-            self.yz_plane = vtk.vtkImageActor()
-            self.yz_plane.GetMapper().SetInputConnection(yz_plane_Colors.GetOutputPort())
-            self.yz_plane.SetDisplayExtent(current_xID, current_xID, 0, self.dim[1], 0, self.dim[2]) # x
-            
-            self.ren.AddActor(self.yz_plane)
+        if self.ui_yz_plane_checkbox.isChecked() == True:
+            # Change plane location
+            self.update_yz_plane(current_xID)
             
             # Re-render the screen
             self.vtkWidget.GetRenderWindow().Render()
@@ -489,35 +526,56 @@ class MainWindow(Qt.QMainWindow):
         # Finally, add the volume to the renderer
         self.ren.AddViewProp(self.volume)
         
-
      
     ''' Handle the checkbox button event '''
     def on_checkbox_change(self):
-          
-           
-        if self.ui_xy_plane_checkbox.isChecked() == False:    
+        if self.ui_xy_plane_checkbox.isChecked() == False:
+            # Remove cut plane actor    
             if hasattr(self, 'xy_plane'):
                 self.ren.RemoveActor(self.xy_plane)
-            # Re-render the screen
-            self.vtkWidget.GetRenderWindow().Render()
+            
+        ''' Seren Lowy added these lines '''
+        if self.ui_xz_plane_checkbox.isChecked() == False:
+            # Remove cut plane actor   
+            if hasattr(self, 'xz_plane'):
+                self.ren.RemoveActor(self.xz_plane)
+        
+        if self.ui_yz_plane_checkbox.isChecked() == False:
+            # Remove cut plane actor
+            if hasattr(self, 'yz_plane'):
+                self.ren.RemoveActor(self.yz_plane)
+            
+        if self.ui_xy_plane_checkbox.isChecked() == True:
+            # Add cut plane actor
+            self.add_xy_plane()
+            
+        if self.ui_xz_plane_checkbox.isChecked() == True:  
+            # Add cut plane actor
+            self.add_xz_plane()
+        
+        if self.ui_yz_plane_checkbox.isChecked() == True:   
+            # Add cut plane actor
+            self.add_yz_plane()
+                
+        ''''''
            
         if self.ui_isoSurf_checkbox.isChecked() == False:
             if hasattr(self, 'isoSurf_actor'):
                 self.ren.RemoveActor(self.isoSurf_actor)
-            # Re-render the screen
-            self.vtkWidget.GetRenderWindow().Render()
+            
 
         if self.ui_dvr_checkbox.isChecked() == False:
             if hasattr(self, 'volume'):
                 self.ren.RemoveViewProp(self.volume)
-            # Re-render the screen
-            self.vtkWidget.GetRenderWindow().Render()
+            
         else:
             if hasattr(self, 'volume'):
                 self.ren.RemoveViewProp(self.volume)
             self.comp_raycasting()
-            # Re-render the screen
-            self.vtkWidget.GetRenderWindow().Render()
+            
+            
+        # Re-render the screen after any change
+        self.vtkWidget.GetRenderWindow().Render()
             
     '''
         Load the color and opacity transfer values from the configuration file
