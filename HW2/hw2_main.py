@@ -134,14 +134,19 @@ class MainWindow(Qt.QMainWindow):
         table_range_label = Qt.QLabel("Select the scalar range for color table")
         groupBox_layout.addWidget(table_range_label)
         hbox =  Qt.QHBoxLayout()
+        
         self.ui_min_range = Qt.QDoubleSpinBox()
         hbox.addWidget(self.ui_min_range)
+        self.ui_min_range.valueChanged.connect(self.on_dynamic_min_spinbox_change)
         self.label_min_range = Qt.QLabel("Min Range")
         hbox.addWidget(self.label_min_range)
+        
         self.ui_max_range = Qt.QDoubleSpinBox()
         hbox.addWidget(self.ui_max_range)
+        self.ui_max_range.valueChanged.connect(self.on_dynamic_max_spinbox_change)
         self.label_max_range = Qt.QLabel("Max Range")
         hbox.addWidget(self.label_max_range)
+        
         tablerange_hwidget = Qt.QWidget()
         tablerange_hwidget.setLayout(hbox)
         groupBox_layout.addWidget(tablerange_hwidget)
@@ -155,6 +160,7 @@ class MainWindow(Qt.QMainWindow):
         self.ui_isoSurf_checkbox.toggled.connect(self.on_checkbox_change)
         self.ui_iso_threshold = Qt.QDoubleSpinBox()
         hbox.addWidget(self.ui_iso_threshold)
+        # Connect to self.on_iso_threshold_spinbox_change
 
         ''' Add the Show Iso-Surface button '''
         self.ui_show_iso_button = Qt.QPushButton('Show')
@@ -254,6 +260,10 @@ class MainWindow(Qt.QMainWindow):
         if dlg.exec_():
             filenames = dlg.selectedFiles()
             self.ui_file_name.setText(filenames[0])
+        
+    def fix_dynamic_range_inner_bounds(self):
+        self.ui_min_range.setMaximum(self.dynamic_max_scalar)
+        self.ui_max_range.setMinimum(self.dynamic_min_scalar)
     
     def open_vtk_file(self):
         '''Read and verify the vtk input file '''
@@ -283,32 +293,36 @@ class MainWindow(Qt.QMainWindow):
 
         # You probably need to remove additional actors below...
             
-        
+        # Setup dynamic range controls
         self.scalar_range = [self.reader.GetOutput().GetScalarRange()[0], self.reader.GetOutput().GetScalarRange()[1]]
-        self.ui_min_label.setText("Min Scalar:"+str(self.scalar_range[0]))
-        self.ui_max_label.setText("Max Scalar:"+str(self.scalar_range[1]))
+        self.dynamic_min_scalar = self.scalar_range[0]
+        self.dynamic_max_scalar = self.scalar_range[1]
         
-        self.ui_min_range.setMinimum(self.scalar_range[0])
-        self.ui_min_range.setValue(self.scalar_range[0])
-        self.ui_max_range.setValue(self.scalar_range[1])
-        self.ui_max_range.setMaximum(self.scalar_range[1])
+        self.ui_min_range.setMinimum(self.dynamic_min_scalar)
+        self.ui_min_range.setValue(self.dynamic_min_scalar)
         
+        self.ui_max_range.setMaximum(self.dynamic_max_scalar)
+        self.ui_max_range.setValue(self.dynamic_max_scalar)
         
-        self.ui_iso_threshold.setValue((self.scalar_range[0]+self.scalar_range[1])/2)
+        self.fix_dynamic_range_inner_bounds()
+        
+        self.ui_iso_threshold.setValue((self.dynamic_min_scalar+self.dynamic_max_scalar)/2)
+        
+        self.ui_min_label.setText("Min Scalar:"+str(self.dynamic_min_scalar))
+        self.ui_max_label.setText("Max Scalar:"+str(self.dynamic_max_scalar))
         
         #Update the lookup table
         # YOU NEED TO UPDATE THE FOLLOWING RANGE BASED ON THE LOADED DATA!!!!
-        self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+        self.bwLut.SetTableRange(self.dynamic_min_scalar, self.dynamic_max_scalar/2.)
         self.bwLut.SetSaturationRange(0, 0)
         self.bwLut.SetHueRange(0, 0)
         self.bwLut.SetValueRange(0, 1)
         self.bwLut.Build()  # effective built
         
         self.dim = self.reader.GetOutput().GetDimensions()
-        
                 
         # set the range for the iso-surface spinner
-        self.ui_iso_threshold.setRange(self.scalar_range[0],self.scalar_range[1])
+        self.ui_iso_threshold.setRange(self.dynamic_min_scalar,self.dynamic_max_scalar)
        
         # set the range for the XY cut plane range 
         self.ui_xslider.setRange(0, self.dim[0]-1)
@@ -364,10 +378,7 @@ class MainWindow(Qt.QMainWindow):
     
     def add_xy_plane(self):
         xy_plane_Colors = vtk.vtkImageMapToColors()
-        xy_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
-        
-        # Update the table range based on the range controls
-        self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+        xy_plane_Colors.SetInputConnection(self.reader.GetOutputPort())        
         
         xy_plane_Colors.SetLookupTable(self.bwLut)
         xy_plane_Colors.Update()
@@ -389,9 +400,6 @@ class MainWindow(Qt.QMainWindow):
         xz_plane_Colors = vtk.vtkImageMapToColors()
         xz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
         
-        # Update the table range based on the range controls
-        self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
-        
         xz_plane_Colors.SetLookupTable(self.bwLut)
         xz_plane_Colors.Update()
     
@@ -412,9 +420,6 @@ class MainWindow(Qt.QMainWindow):
         # Initialize the color mapping for the cut plane
         yz_plane_Colors = vtk.vtkImageMapToColors()
         yz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
-        
-        # Update the table range based on the range controls
-        self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
         
         yz_plane_Colors.SetLookupTable(self.bwLut)
         yz_plane_Colors.Update()
@@ -479,9 +484,30 @@ class MainWindow(Qt.QMainWindow):
     def on_submit_clicked(self):
         self.show_popup_message(self.ui_textfield.text())
     
-    ''' Handle the spinbox event '''
-    def on_spinbox_change(self, value):
-        self.label_spinbox.setText("Spin Box Value:"+str(value))
+    ''' Handle the dynamic range spinbox events '''
+    def on_dynamic_min_spinbox_change(self, value):
+        # Receive changed value
+        self.dynamic_min_scalar = value
+        self.fix_dynamic_range_inner_bounds()
+        
+        # Update label and range state
+        self.ui_min_label.setText("Min Scalar:"+str(self.dynamic_min_scalar))
+        self.bwLut.SetTableRange(self.dynamic_min_scalar, self.dynamic_max_scalar/2.)
+        
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
+    
+    def on_dynamic_max_spinbox_change(self, value):
+        # Receive changed value
+        self.dynamic_max_scalar = value
+        self.fix_dynamic_range_inner_bounds()
+        
+        # Update label and range state
+        self.ui_max_label.setText("Max Scalar:"+str(self.dynamic_max_scalar))
+        self.bwLut.SetTableRange(self.dynamic_min_scalar, self.dynamic_max_scalar/2.)
+        
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
             
 
     '''TODO: You need to complete the following for Raycasting '''
