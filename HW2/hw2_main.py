@@ -359,6 +359,10 @@ class MainWindow(Qt.QMainWindow):
         if self.ui_xy_plane_checkbox.isChecked() == True:           
             xy_plane_Colors = vtk.vtkImageMapToColors()
             xy_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
+            
+            # Update the table range based on the range controls
+            self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+            
             xy_plane_Colors.SetLookupTable(self.bwLut)
             xy_plane_Colors.Update()
             
@@ -380,10 +384,58 @@ class MainWindow(Qt.QMainWindow):
         TODO: Complete the yslider and xslider implementation, check the above completed on_zslider_change() as reference
     '''
     def on_yslider_change(self, value):
-        pass
+        self.label_yslider.setText("Y index:"+str(self.ui_yslider.value()))
+        current_yID = int(self.ui_yslider.value())
+        
+        if self.ui_xy_plane_checkbox.isChecked() == True:           
+            xz_plane_Colors = vtk.vtkImageMapToColors()
+            xz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
+            
+            # Update the table range based on the range controls
+            self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+            
+            xz_plane_Colors.SetLookupTable(self.bwLut)
+            xz_plane_Colors.Update()
+            
+            if hasattr(self, 'xz_plane'):
+                self.ren.RemoveActor(self.xz_plane)
+          
+    
+            self.xz_plane = vtk.vtkImageActor()
+            self.xz_plane.GetMapper().SetInputConnection(xz_plane_Colors.GetOutputPort())
+            self.xz_plane.SetDisplayExtent(0, self.dim[0], current_yID, current_yID, 0, self.dim[2]) # y
+            
+            self.ren.AddActor(self.xz_plane)
+            
+            # Re-render the screen
+            self.vtkWidget.GetRenderWindow().Render() 
     
     def on_xslider_change(self, value):
-        pass
+        self.label_xslider.setText("X index:"+str(self.ui_xslider.value()))
+        current_xID = int(self.ui_xslider.value())
+        
+        if self.ui_xy_plane_checkbox.isChecked() == True:           
+            yz_plane_Colors = vtk.vtkImageMapToColors()
+            yz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
+            
+            # Update the table range based on the range controls
+            self.bwLut.SetTableRange(self.scalar_range[0], self.scalar_range[1]/2.)
+            
+            yz_plane_Colors.SetLookupTable(self.bwLut)
+            yz_plane_Colors.Update()
+            
+            if hasattr(self, 'yz_plane'):
+                self.ren.RemoveActor(self.yz_plane)
+          
+    
+            self.yz_plane = vtk.vtkImageActor()
+            self.yz_plane.GetMapper().SetInputConnection(yz_plane_Colors.GetOutputPort())
+            self.yz_plane.SetDisplayExtent(current_xID, current_xID, 0, self.dim[1], 0, self.dim[2]) # x
+            
+            self.ren.AddActor(self.yz_plane)
+            
+            # Re-render the screen
+            self.vtkWidget.GetRenderWindow().Render()
 
            
     ''' Handle the click event for the submit button  '''
