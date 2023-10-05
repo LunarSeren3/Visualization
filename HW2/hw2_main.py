@@ -371,8 +371,8 @@ class MainWindow(Qt.QMainWindow):
         self.ren.ResetCamera()
         self.re_render()   
         
-    '''TODO: Complete this function for the iso surface opacity'''
     def change_opacity(self, opacity):
+        ''' Seren Lowy added these lines '''
         if hasattr(self, 'isoSurf_actor'):
             zero_one_opacity = opacity / 100.0
         
@@ -389,6 +389,8 @@ class MainWindow(Qt.QMainWindow):
             
         if self.ui_isoSurf_checkbox.isChecked() == True:            
             self.isoSurfExtractor = vtk.vtkMarchingCubes()
+            
+            ''' Seren Lowy added these lines '''
             self.isoSurfExtractor.SetInputConnection(self.reader.GetOutputPort())
             self.isoSurfExtractor.SetValue(0, self.iso_threshold_scalar)
             
@@ -403,6 +405,7 @@ class MainWindow(Qt.QMainWindow):
             self.isoSurf_actor = vtk.vtkActor()
             self.isoSurf_actor.SetMapper(self.isoSurfMapper)
             self.ren.AddActor(self.isoSurf_actor)
+            ''''''
        
         # Re-render the screen
         self.re_render()
@@ -480,7 +483,7 @@ class MainWindow(Qt.QMainWindow):
     ''''''
      
 
-    ''' Cut Planes functions
+    ''' Cut Planes functions. Seren Lowy added y and x versions
     '''
     def on_zslider_change(self, value):
         self.label_zslider.setText("Z index:"+str(self.ui_zslider.value()))
@@ -565,9 +568,8 @@ class MainWindow(Qt.QMainWindow):
         
         # The volume will be displayed by ray-cast alpha compositing.
         # A ray-cast mapper is needed to do the ray-casting.
-        volumeMapper = vtk.vtkFixedPointVolumeRayCastMapper()
-
-    
+        volumeMapper = vtk.vtkSmartVolumeMapper()
+        volumeMapper.SetInputConnection(self.reader.GetOutputPort())
 
         # The following added the control points to the color transfer function
         # The control points are loaded from a file
@@ -584,17 +586,22 @@ class MainWindow(Qt.QMainWindow):
 
     
         # Use gradient information to enhanced DVR
-        # volumeGradientOpacity = vtk.vtkPiecewiseFunction()
-        # volumeGradientOpacity.AddPoint(0, 0.0)
-        # volumeGradientOpacity.AddPoint(90, 0.5)
-        # volumeGradientOpacity.AddPoint(100, 1.0)
-    
+        volumeGradientOpacity = vtk.vtkPiecewiseFunction()
+        for opacityMap in self.volume_gradient_opacity:
+            volumeGradientOpacity.AddPoint(opacityMap[0], opacityMap[1])    
         
         # Next, you should set the volume property
-        # 
+        volumeProperty = vtk.vtkVolumeProperty()
+        volumeProperty.SetColor(volumeColor)
+        volumeProperty.SetScalarOpacity(volumeScalarOpacity)
+        volumeProperty.SetGradientOpacity(volumeGradientOpacity)
+        volumeProperty.SetInterpolationTypeToLinear()
     
         # Create a vtkVolume object 
         # set its mapper created above and its property.
+        self.volume = vtk.vtkVolume()
+        self.volume.SetMapper(volumeMapper)
+        self.volume.SetProperty(volumeProperty)
     
         # Finally, add the volume to the renderer
         self.ren.AddViewProp(self.volume)
@@ -666,13 +673,17 @@ class MainWindow(Qt.QMainWindow):
             1000, 0.15
             1150, 0.85
     '''
+    
+    ''' Seren Lowy modified this function to accept gradient opacity data from the config text file. '''
     def load_color_transfer_values(self):
         fileName = "rendering_config.txt"
         self.volume_colors = []
         self.volume_opacity = []
+        self.volume_gradient_opacity = []
         with open(fileName, 'r') as f:
             isLoadColor = False
             isLoadOpacity = False
+            isLoadGradientOpacity = False
             for line in f:    
                 if len(line)>1:
                     if "#Color" in line:
@@ -681,6 +692,11 @@ class MainWindow(Qt.QMainWindow):
                     if "#Opacity" in line:
                         isLoadColor = False
                         isLoadOpacity = True
+                        continue
+                    if "#GradientOpacity" in line:
+                        isLoadColor = False
+                        isLoadOpacity = False
+                        isLoadGradientOpacity = True
                         continue
                     
                     line = line.replace("\n",'')
@@ -697,6 +713,11 @@ class MainWindow(Qt.QMainWindow):
                         scalar_value = float(line[0])
                         opacity = float(line[1])
                         self.volume_opacity.append([scalar_value,opacity])
+                        
+                    if isLoadGradientOpacity:
+                        scalar_value = float(line[0])
+                        opacity = float(line[1])
+                        self.volume_gradient_opacity.append([scalar_value,opacity])
 
         
 if __name__ == "__main__":
