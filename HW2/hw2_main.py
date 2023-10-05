@@ -176,6 +176,8 @@ class MainWindow(Qt.QMainWindow):
 
         hbox =  Qt.QHBoxLayout()
         self.ui_opacity_slider = Qt.QSlider(QtCore.Qt.Horizontal)
+        self.ui_opacity_slider.setRange(0, 100)
+        self.ui_opacity_slider.setValue(100)
         self.ui_opacity_slider.valueChanged.connect(self.change_opacity)
         hbox.addWidget(self.ui_opacity_slider)
         self.label_opacity_slider = Qt.QLabel()
@@ -297,6 +299,15 @@ class MainWindow(Qt.QMainWindow):
         
         if hasattr(self, 'xy_plane'):
             self.ren.RemoveActor(self.xy_plane)
+            
+        if hasattr(self, 'xz_plane'):
+            self.ren.RemoveActor(self.xz_plane)
+            
+        if hasattr(self, 'yz_plane'):
+            self.ren.RemoveActor(self.yz_plane)
+            
+        if hasattr(self, 'isoSurf_actor'):
+            self.ren.RemoveActor(self.isoSurf_actor)
 
         # You probably need to remove additional actors below...
             
@@ -363,7 +374,11 @@ class MainWindow(Qt.QMainWindow):
     '''TODO: Complete this function for the iso surface opacity'''
     def change_opacity(self, opacity):
         if hasattr(self, 'isoSurf_actor'):
-            self.isoSurf_actor.GetProperty().SetOpacity(opacity)
+            zero_one_opacity = opacity / 100.0
+        
+            self.isoSurf_actor.GetProperty().SetOpacity(zero_one_opacity)
+            
+            self.label_opacity_slider.setText("Opacity:"+str(zero_one_opacity))
             
             # Re-render the screen
             self.re_render()
