@@ -92,6 +92,9 @@ class MainWindow(Qt.QMainWindow):
         alert = Qt.QMessageBox()
         alert.setText(msg)
         alert.exec_()
+        
+    def re_render(self):
+        self.vtkWidget.GetRenderWindow().Render()
     
     '''
         Add QT controls to the control panel in the righ hand size
@@ -264,6 +267,10 @@ class MainWindow(Qt.QMainWindow):
     def fix_dynamic_range_inner_bounds(self):
         self.ui_min_range.setMaximum(self.dynamic_max_scalar)
         self.ui_max_range.setMinimum(self.dynamic_min_scalar)
+        
+    def fix_iso_threshold_bounds(self):
+        self.ui_iso_threshold.setMinimum(self.dynamic_min_scalar)
+        self.ui_iso_threshold.setMaximum(self.dynamic_max_scalar)
     
     def open_vtk_file(self):
         '''Read and verify the vtk input file '''
@@ -325,6 +332,7 @@ class MainWindow(Qt.QMainWindow):
         self.ui_iso_threshold.setRange(self.dynamic_min_scalar,self.dynamic_max_scalar)
         self.iso_threshold_scalar = (self.dynamic_min_scalar+self.dynamic_max_scalar)/2
         self.ui_iso_threshold.setValue(self.iso_threshold_scalar)
+        self.fix_iso_threshold_bounds()
        
         # set the range for the XY cut plane range 
         self.ui_xslider.setRange(0, self.dim[0]-1)
@@ -332,7 +340,7 @@ class MainWindow(Qt.QMainWindow):
         ''' Seren Lowy: added these lines '''
         self.ui_yslider.setRange(0, self.dim[1]-1)
         self.ui_zslider.setRange(0, self.dim[2]-1)
-
+        ''''''
 
         # Get the data outline
         outlineData = vtk.vtkOutlineFilter()
@@ -350,23 +358,39 @@ class MainWindow(Qt.QMainWindow):
         
         self.ren.AddActor(self.outline)
         self.ren.ResetCamera()
-        self.vtkWidget.GetRenderWindow().Render()   
+        self.re_render()   
         
     '''TODO: Complete this function for the iso surface opacity'''
-    def change_opacity(self,opacity):
-        pass
-    
-        
-    '''TODO: You need to complete the following iso surface extraction function '''   
+    def change_opacity(self, opacity):
+        if hasattr(self, 'isoSurf_actor'):
+            self.isoSurf_actor.GetProperty().SetOpacity(opacity)
+            
+            # Re-render the screen
+            self.re_render()
+       
     def extract_one_isosurface(self):
         if hasattr(self, 'isoSurf_actor'):
             self.ren.RemoveActor(self.isoSurf_actor)
             
         if self.ui_isoSurf_checkbox.isChecked() == True:            
-            isoSurfExtractor = vtk.vtkMarchingCubes()
+            self.isoSurfExtractor = vtk.vtkMarchingCubes()
+            self.isoSurfExtractor.SetInputConnection(self.reader.GetOutputPort())
+            self.isoSurfExtractor.SetValue(0, self.iso_threshold_scalar)
+            
+            self.isoSurfStripper = vtk.vtkStripper()
+            self.isoSurfStripper.SetInputConnection(self.isoSurfExtractor.GetOutputPort())
+            self.isoSurfStripper.Update()
+            
+            self.isoSurfMapper = vtk.vtkPolyDataMapper()
+            self.isoSurfMapper.ScalarVisibilityOff()
+            self.isoSurfMapper.SetInputConnection(self.isoSurfStripper.GetOutputPort())
+            
+            self.isoSurf_actor = vtk.vtkActor()
+            self.isoSurf_actor.SetMapper(self.isoSurfMapper)
+            self.ren.AddActor(self.isoSurf_actor)
        
         # Re-render the screen
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
         
     '''Seren Lowy added these functions'''
     def update_xy_plane(self, current_zID):
@@ -396,7 +420,7 @@ class MainWindow(Qt.QMainWindow):
         self.ren.AddActor(self.xy_plane)
         
         # Re-render the screen
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
         
     def add_xz_plane(self):
         xz_plane_Colors = vtk.vtkImageMapToColors()
@@ -416,7 +440,7 @@ class MainWindow(Qt.QMainWindow):
         self.ren.AddActor(self.xz_plane)
         
         # Re-render the screen
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
         
     def add_yz_plane(self):
         # Initialize the color mapping for the cut plane
@@ -437,7 +461,7 @@ class MainWindow(Qt.QMainWindow):
         self.ren.AddActor(self.yz_plane)
         
         # Re-render the screen
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
     ''''''
      
 
@@ -452,7 +476,7 @@ class MainWindow(Qt.QMainWindow):
             self.update_xy_plane(current_zID)
             
             # Re-render the screen
-            self.vtkWidget.GetRenderWindow().Render() 
+            self.re_render() 
 
     def on_yslider_change(self, value):
         self.label_yslider.setText("Y index:"+str(self.ui_yslider.value()))
@@ -463,7 +487,7 @@ class MainWindow(Qt.QMainWindow):
             self.update_xz_plane(current_yID)
             
             # Re-render the screen
-            self.vtkWidget.GetRenderWindow().Render() 
+            self.re_render() 
     
     def on_xslider_change(self, value):
         self.label_xslider.setText("X index:"+str(self.ui_xslider.value()))
@@ -474,7 +498,7 @@ class MainWindow(Qt.QMainWindow):
             self.update_yz_plane(current_xID)
             
             # Re-render the screen
-            self.vtkWidget.GetRenderWindow().Render()
+            self.re_render()
 
            
     ''' Handle the click event for the submit button  '''
@@ -485,31 +509,37 @@ class MainWindow(Qt.QMainWindow):
     def on_dynamic_min_spinbox_change(self, value):
         # Receive changed value
         self.dynamic_min_scalar = value
+        
+        # Apply safety constraints on scalar range bounds
         self.fix_dynamic_range_inner_bounds()
+        self.fix_iso_threshold_bounds()
         
         # Update range state
         self.bwLut.SetTableRange(self.dynamic_min_scalar, self.dynamic_max_scalar/2.)
         
         # Re-render the screen
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
     
     def on_dynamic_max_spinbox_change(self, value):
         # Receive changed value
         self.dynamic_max_scalar = value
+        
+        # Apply safety constraints on scalar range bounds
         self.fix_dynamic_range_inner_bounds()
+        self.fix_iso_threshold_bounds()
         
         # Update range state
         self.bwLut.SetTableRange(self.dynamic_min_scalar, self.dynamic_max_scalar/2.)
         
         # Re-render the screen
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
         
     def on_iso_threshold_spinbox_change(self, value):
         # Receive changed value
         self.iso_threshold_scalar = value
         
         # Re-render the screen
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
             
 
     '''TODO: You need to complete the following for Raycasting '''
@@ -603,7 +633,7 @@ class MainWindow(Qt.QMainWindow):
             
             
         # Re-render the screen after any change
-        self.vtkWidget.GetRenderWindow().Render()
+        self.re_render()
             
     '''
         Load the color and opacity transfer values from the configuration file
