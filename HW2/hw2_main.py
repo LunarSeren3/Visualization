@@ -250,7 +250,7 @@ class MainWindow(Qt.QMainWindow):
         ui_volWidget.setLayout(hbox)
         
         self.ui_lcp_button = Qt.QPushButton('Load Control Points')
-        self.ui_lcp_button.clicked.connect(self.load_color_transfer_values)
+        self.ui_lcp_button.clicked.connect(self.comp_raycasting)
         self.ui_lcp_button.show()
         hbox.addWidget(self.ui_lcp_button)
 
@@ -384,6 +384,10 @@ class MainWindow(Qt.QMainWindow):
             self.re_render()
        
     def extract_one_isosurface(self):
+        # Don't render if there is no data loaded
+        if not hasattr(self, 'reader'):
+            return
+    
         if hasattr(self, 'isoSurf_actor'):
             self.ren.RemoveActor(self.isoSurf_actor)
             
@@ -421,6 +425,10 @@ class MainWindow(Qt.QMainWindow):
         self.yz_plane.SetDisplayExtent(current_xID, current_xID, 0, self.dim[1], 0, self.dim[2]) # Y
     
     def add_xy_plane(self):
+        # Don't render if there is no data loaded
+        if not hasattr(self, 'reader'):
+            return
+            
         xy_plane_Colors = vtk.vtkImageMapToColors()
         xy_plane_Colors.SetInputConnection(self.reader.GetOutputPort())        
         
@@ -441,6 +449,10 @@ class MainWindow(Qt.QMainWindow):
         self.re_render()
         
     def add_xz_plane(self):
+        # Don't render if there is no data loaded
+        if not hasattr(self, 'reader'):
+            return
+    
         xz_plane_Colors = vtk.vtkImageMapToColors()
         xz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
         
@@ -461,6 +473,10 @@ class MainWindow(Qt.QMainWindow):
         self.re_render()
         
     def add_yz_plane(self):
+        # Don't render if there is no data loaded
+        if not hasattr(self, 'reader'):
+            return
+    
         # Initialize the color mapping for the cut plane
         yz_plane_Colors = vtk.vtkImageMapToColors()
         yz_plane_Colors.SetInputConnection(self.reader.GetOutputPort())
@@ -562,6 +578,18 @@ class MainWindow(Qt.QMainWindow):
 
     '''TODO: You need to complete the following for Raycasting '''
     def comp_raycasting(self):
+        # Don't render if the show checkbox is not checked
+        if self.ui_dvr_checkbox.isChecked() == False:
+            return
+            
+        # Don't render if there is no data loaded
+        if not hasattr(self, 'reader'):
+            return
+    
+        # Remove previous result
+        if hasattr(self, 'volume'):
+            self.ren.RemoveViewProp(self.volume)
+    
         # Load the rendering configuration file that contains
         # control points for color and opacity transfer function
         self.load_color_transfer_values()
@@ -605,6 +633,9 @@ class MainWindow(Qt.QMainWindow):
     
         # Finally, add the volume to the renderer
         self.ren.AddViewProp(self.volume)
+        
+        # Re-render the screen after any change
+        self.re_render()
         
      
     ''' Handle the checkbox button event '''
@@ -718,6 +749,9 @@ class MainWindow(Qt.QMainWindow):
                         scalar_value = float(line[0])
                         opacity = float(line[1])
                         self.volume_gradient_opacity.append([scalar_value,opacity])
+                        
+        # Re-render the screen after any change
+        self.re_render()
 
         
 if __name__ == "__main__":
