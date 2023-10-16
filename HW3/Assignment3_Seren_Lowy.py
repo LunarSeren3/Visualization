@@ -313,14 +313,14 @@ class MainWindow(Qt.QMainWindow):
             self.ren.RemoveActor(self.outline)
 
         '''' TODO (optional) You need to modify the following actors' names based on how you define them!!!!!'''
-        #if hasattr(self, 'arrow_actor'):
-        #    self.ren.RemoveActor(self.arrow_actor)
+        if hasattr(self, 'arrow_actor'):
+            self.ren.RemoveActor(self.arrow_actor)
 
-        #if hasattr(self, 'streamline_actor'):
-        #    self.ren.RemoveActor(self.streamline_actor)
+        if hasattr(self, 'streamline_actor'):
+            self.ren.RemoveActor(self.streamline_actor)
 
-        #if hasattr(self, 'lic_actor'):
-        #    self.ren.RemoveActor(self.lic_actor)
+        if hasattr(self, 'lic_actor'):
+            self.ren.RemoveActor(self.lic_actor)
 
         self.seeding_strategy = 0  # Uniform seeding is the default strategy
 
@@ -386,6 +386,8 @@ class MainWindow(Qt.QMainWindow):
             
                 if selected_id == -3:
                     print("Uniform Sample is selected.")
+                    
+                    # This feature is not needed here.
                     
                 elif selected_id == -4:
                     print("Random Sample is selected.")
