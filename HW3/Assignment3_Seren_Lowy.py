@@ -371,16 +371,35 @@ class MainWindow(Qt.QMainWindow):
             densityFilter = vtk.vtkMaskPoints()
             densityFilter.SetInputData(self.reader.GetOutput())
             
+            # Choose the type of glyphs as arrows
+            glyphSource = vtk.vtkGlyphSource2D() 
+            glyphSource.SetGlyphTypeToArrow()
+            glyphSource.FilledOff()
+            
+            # Setup glyph object
+            glyph2D = vtk.vtkGlyph2D()
+            glyph2D.SetSourceConnection(glyphSource.GetOutputPort())
+            glyph2D.OrientOn()
+            glyph2D.SetScaleModeToScaleByVector()
+            glyph2D.SetScaleFactor(self.arrow_scale.value()) # adjust the length of the arrows accordingly
+            
             # Read sampling/masking option control
             selected_id = self.arrow_radio_group.checkedId()
             if selected_id == -2:
                 print("All grid points is selected.")
                 
+                # Connect glyph object to reader without density filter if we are not down sampling
+                glyph2D.SetInputData(self.reader.GetOutput())
+                
             else:
                 # Down sample the grid points.
                 # TODO: this sometimes increases the number of points if the dataset is not dense?
                 densityFilter.SetMaximumNumberOfPoints(500)
+                
+                # Connect glyph object to density filter if we are down sampling
+                glyph2D.SetInputData(densityFilter.GetOutput())
             
+                # Select the down sampling type
                 if selected_id == -3:
                     print("Uniform Sample is selected.")
                     
@@ -390,21 +409,9 @@ class MainWindow(Qt.QMainWindow):
                     print("Random Sample is selected.")
                     densityFilter.RandomModeOn() # enable the random sampling mechanism
                     densityFilter.SetRandomModeType(3) #specify the sampling mode
-                
+            
+            # Update density filter and glyph object after receiving input data
             densityFilter.Update()
-            
-            # Choose the type of glyphs as arrows
-            glyphSource = vtk.vtkGlyphSource2D() 
-            glyphSource.SetGlyphTypeToArrow()
-            glyphSource.FilledOff()
-            
-            # Setup glyph object
-            glyph2D = vtk.vtkGlyph2D()
-            glyph2D.SetSourceConnection(glyphSource.GetOutputPort())
-            glyph2D.SetInputData(densityFilter.GetOutput())
-            glyph2D.OrientOn()
-            glyph2D.SetScaleModeToScaleByVector()
-            glyph2D.SetScaleFactor(self.arrow_scale.value()) # adjust the length of the arrows accordingly
             glyph2D.Update()            
 
             # Mapper and actor
@@ -526,7 +533,7 @@ class MainWindow(Qt.QMainWindow):
         
         #(3) Construct a lookup table with a grayscale color scheme to prevent unintended color mappings to LIC values. 
         
-        #(4) S et up a vtkDatasetMapper, connecting it to both the dataset and the lookup table. 
+        #(4) Set up a vtkDatasetMapper, connecting it to both the dataset and the lookup table. 
         
         #(5) Establish an actor for the mapper. Adjust its opacity in relation to the LIC opacity slider, allowing the underlying color map to be discernible, and then return the actor. 
         return None
