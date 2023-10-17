@@ -358,10 +358,6 @@ class MainWindow(Qt.QMainWindow):
         self.ren.ResetCamera()
         self.vtkWidget.GetRenderWindow().Render()
         
-        
-
-    
-    ''' TODO: Use the vtkMaskPoints filter and vtkGlyph2D filter to show an arrow plot on a 2D surface'''
     def on_arrow_checkbox_change(self, discard=False):
         if hasattr(self, "arrow_actor"):
             self.ren.RemoveActor(self.arrow_actor)
@@ -381,7 +377,8 @@ class MainWindow(Qt.QMainWindow):
                 print("All grid points is selected.")
                 
             else:
-                # Down sample the grid points
+                # Down sample the grid points.
+                # TODO: this sometimes increases the number of points if the dataset is not dense?
                 densityFilter.SetMaximumNumberOfPoints(500)
             
                 if selected_id == -3:
@@ -395,7 +392,6 @@ class MainWindow(Qt.QMainWindow):
                     densityFilter.SetRandomModeType(3) #specify the sampling mode
                 
             densityFilter.Update()
-
             
             # Choose the type of glyphs as arrows
             glyphSource = vtk.vtkGlyphSource2D() 
@@ -409,9 +405,7 @@ class MainWindow(Qt.QMainWindow):
             glyph2D.OrientOn()
             glyph2D.SetScaleModeToScaleByVector()
             glyph2D.SetScaleFactor(self.arrow_scale.value()) # adjust the length of the arrows accordingly
-            glyph2D.Update()
-            
-            
+            glyph2D.Update()            
 
             # Mapper and actor
             arrows_mapper = vtk.vtkPolyDataMapper()
@@ -424,11 +418,10 @@ class MainWindow(Qt.QMainWindow):
             
             self.ren.AddActor(self.arrow_actor)
             
-            
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
         
-    '''even handle for the radio buttons of seeding strategies
+    '''event handle for the radio buttons of seeding strategies
     '''
     def on_seeding_strategy(self):
         if self.uniform_seed_radio.isChecked() == True:
@@ -437,15 +430,14 @@ class MainWindow(Qt.QMainWindow):
         elif self.random_seed_radio.isChecked() ==  True:
             self.uniform_seed_radio.setChecked(False)
             self.seeding_strategy = 1
-
    
     '''         
-        TODO: Complete the following function for genenerate uniform seeds 
+        TODO: Complete the following function for generate uniform seeds 
         for streamline placement
 
     '''
     def uniform_generate_seeds(self):
-        num_seeds = int (self.number_seeds.value())
+        num_seeds = int(self.number_seeds.value())
         seedPoints = vtk.vtkPoints()
 
         # Generate the uniformly positioned seeds below!!
@@ -456,7 +448,7 @@ class MainWindow(Qt.QMainWindow):
         return seedPolyData
 
     '''  
-        TODO: Complete the following function for genenerate random seeds 
+        TODO: Complete the following function for generate random seeds 
         for streamline placement
     '''
     def random_generate_seeds(self):
