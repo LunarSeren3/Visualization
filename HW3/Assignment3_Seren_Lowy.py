@@ -417,6 +417,7 @@ class MainWindow(Qt.QMainWindow):
             # Mapper and actor
             arrows_mapper = vtk.vtkPolyDataMapper()
             arrows_mapper.SetInputConnection(glyph2D.GetOutputPort())
+            arrows_mapper.ScalarVisibilityOff()
             arrows_mapper.Update()
 
             self.arrow_actor = vtk.vtkActor()
@@ -437,19 +438,56 @@ class MainWindow(Qt.QMainWindow):
         elif self.random_seed_radio.isChecked() ==  True:
             self.uniform_seed_radio.setChecked(False)
             self.seeding_strategy = 1
+            
+        # Update the streamline plot now
+        if hasattr(self, 'streamline_actor'):
+                self.ren.RemoveActor(self.streamline_actor)
+                
+                self.on_streamline_checkbox_change()
    
     '''         
         TODO: Complete the following function for generate uniform seeds 
         for streamline placement
 
     '''
+    def map_positions_to_data_domain(self, normal_positions):
+        xmin, xmax, ymin, ymax, _, _ = self.reader.GetPolyDataOutput().GetBounds()
+        width = xmax - xmin
+        height = ymax - ymin
+        
+        positions = [(xmin + np[0] * width, 
+                      ymin + np[1] * height) 
+                        for np in normal_positions]
+                        
+        return positions
+    
+    import math
+    
     def uniform_generate_seeds(self):
         num_seeds = int(self.number_seeds.value())
         seedPoints = vtk.vtkPoints()
 
-        # Generate the uniformly positioned seeds below!!
+        # Define parameters for a uniform grid
+        linear_dimension = int(math.sqrt(num_seeds))
+        linear_dim_fraction = 1.0 / (linear_dimension + 1)
+        
+        # Generate uniform positions in normal space
+        normal_positions = []
+        for i in range(linear_dimension):
+            for j in range(linear_dimension):
+                x = (i + 1) * linear_dim_fraction
+                y = (j + 1) * linear_dim_fraction
+                
+                normal_positions += [(x, y)]
+        
+        # Map the normal space to the data domain
+        positions = self.map_positions_to_data_domain(normal_positions)
+                        
+        # Create seed points with the computed positions in data space
+        for pos in positions:
+            seedPoints.InsertNextPoint(pos[0], pos[1], 0)
 
-        # Need to put the seed points in a vtkPolyData object
+        # Put the seed points in a vtkPolyData object
         seedPolyData  = vtk.vtkPolyData()
         seedPolyData.SetPoints(seedPoints)
         return seedPolyData
@@ -458,13 +496,30 @@ class MainWindow(Qt.QMainWindow):
         TODO: Complete the following function for generate random seeds 
         for streamline placement
     '''
+    def random_roll(self):
+        random_resolution = 32768.0
+        return random.randint(0, int(random_resolution)) / random_resolution
+    
     def random_generate_seeds(self):
-        numb_seeds = int (self.number_seeds.value())
+        num_seeds = int (self.number_seeds.value())
         seedPoints = vtk.vtkPoints()       
 
-        # Generate the random seeds below!!
+        # Generate the random positions in normal space
+        normal_positions = []
+        for _ in range(num_seeds):
+            x = self.random_roll()
+            y = self.random_roll()
+            
+            normal_positions += [(x, y)]
+        
+        # Map the normal space to the data domain
+        positions = self.map_positions_to_data_domain(normal_positions)
+        
+        # Create seed points with the computed positions in data space
+        for pos in positions:
+            seedPoints.InsertNextPoint(pos[0], pos[1], 0)
 
-        # Need to put the seed points in a vtkPolyData object
+        # Put the seed points in a vtkPolyData object
         seedPolyData  = vtk.vtkPolyData()
         seedPolyData.SetPoints(seedPoints)
         return seedPolyData
@@ -483,21 +538,42 @@ class MainWindow(Qt.QMainWindow):
                 seedPolyData = self.uniform_generate_seeds()
             
             # Step 2: Create a vtkStreamTracer object, set input data and seeding points
+            '''From assignment doc'''
+            stream_tracer = vtk.vtkStreamTracer()
+            stream_tracer.SetInputData(self.reader.GetPolyDataOutput()) # set vector field
+            stream_tracer.SetSourceData(seedPolyData) # pass in the seeds
 
 
             # Step 3: Set the parameters. 
             # Check the reference https://vtk.org/doc/nightly/html/classvtkStreamTracer.html
             # to have the full list of parameters
-
-
+            '''From assignment doc'''
+            stream_tracer.SetIntegratorTypeToRungeKutta45()
+            stream_tracer.SetIntegrationDirectionToBoth()
+            
+            '''Make integration step 2x finer'''
+            init_integrate_step = stream_tracer.GetInitialIntegrationStep()
+            min_integrate_step = stream_tracer.GetMinimumIntegrationStep()
+            max_integrate_step = stream_tracer.GetMaximumIntegrationStep()
+            stream_tracer.SetInitialIntegrationStep(init_integrate_step / 2.0)
+            stream_tracer.SetMinimumIntegrationStep(min_integrate_step / 2.0)
+            stream_tracer.SetMaximumIntegrationStep(max_integrate_step / 2.0)
 
             # Step 4: Visualization
+            streamline_mapper = vtk.vtkPolyDataMapper()
+            streamline_mapper.SetInputConnection(stream_tracer.GetOutputPort())
+            streamline_mapper.ScalarVisibilityOff()
+            self.streamline_actor = vtk.vtkActor()
+            self.streamline_actor.SetMapper(streamline_mapper)
+            self.streamline_actor.GetProperty().SetColor(0,0,1)
+            self.ren.AddActor(self.streamline_actor)
         
         
         # Turn on the following if you want to disable the streamline visualization
         # But again you need to modify the "streamline_actor" name based on what you use!!!
-        # else:
-            # self.ren.RemoveActor(self.streamline_actor)
+        else:
+            if hasattr(self, 'streamline_actor'):
+                self.ren.RemoveActor(self.streamline_actor)
         
            
         # Re-render the screen
