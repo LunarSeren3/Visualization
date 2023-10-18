@@ -242,9 +242,18 @@ class MainWindow(Qt.QMainWindow):
         # Connect the slider's valueChanged signal to update the label
         self.LIC_opacity_slider.valueChanged.connect(self.update_LIC_opacity_label)
         
+    def find_color_scheme(self, i):
+        if i == 0:
+            return white_red_scale
+        elif i == 1:
+            return blank_scale
+        elif i == 2:
+            return gray_scale
+        
     def select_color_scheme(self,i):
         self.color_scheme = i
-        MakeLUT(self.color_scheme, self.lut)
+        color_scale_fn = self.find_color_scheme(i)
+        self.lut = makeColorTable(256, color_scale_fn)
         self.vtk_poly_mapper.SetLookupTable(self.lut)
         self.vtkWidget.GetRenderWindow().Render()
 
@@ -270,8 +279,8 @@ class MainWindow(Qt.QMainWindow):
         #print(min_scalar,max_scalar)
         vtk_poly_mapper = vtk.vtkPolyDataMapper()
         vtk_poly_mapper.SetInputConnection(self.reader.GetOutputPort())
-        self.lut = vtk.vtkLookupTable()
-        MakeLUT(self.color_scheme, self.lut)
+        color_scale_fn = self.find_color_scheme(self.color_scheme)
+        self.lut = makeColorTable(256, color_scale_fn)
         vtk_poly_mapper.SetScalarModeToUsePointData()
         vtk_poly_mapper.SetLookupTable(self.lut)
         vtk_poly_mapper.SetScalarRange(min_scalar, max_scalar)
@@ -445,11 +454,6 @@ class MainWindow(Qt.QMainWindow):
                 
                 self.on_streamline_checkbox_change()
    
-    '''         
-        TODO: Complete the following function for generate uniform seeds 
-        for streamline placement
-
-    '''
     def map_positions_to_data_domain(self, normal_positions):
         xmin, xmax, ymin, ymax, _, _ = self.reader.GetPolyDataOutput().GetBounds()
         width = xmax - xmin
@@ -492,10 +496,6 @@ class MainWindow(Qt.QMainWindow):
         seedPolyData.SetPoints(seedPoints)
         return seedPolyData
 
-    '''  
-        TODO: Complete the following function for generate random seeds 
-        for streamline placement
-    '''
     def random_roll(self):
         random_resolution = 32768.0
         return random.randint(0, int(random_resolution)) / random_resolution
@@ -524,11 +524,6 @@ class MainWindow(Qt.QMainWindow):
         seedPolyData.SetPoints(seedPoints)
         return seedPolyData
 
-        
-    ''' 
-        TODO: Complete the following function to generate a set of streamlines
-        from the above generated uniform or random seeds
-    '''
     def on_streamline_checkbox_change(self):
         if self.qt_streamline_checkbox.isChecked() == True:
             # Step 1: Create seeding points 
@@ -582,7 +577,7 @@ class MainWindow(Qt.QMainWindow):
  
     ''' This function generates a uniform grid for the input data, use it for your uniform streamline seeding
         You can also learn how to map seed point locations for the random seed strategy too! '''
-    def generate_uniform_grid(self):
+    '''def generate_uniform_grid(self):
         self.vectorFieldPolyData = self.reader.GetPolyDataOutput()
         self.bounds = self.vectorFieldPolyData.GetBounds()
         
@@ -596,64 +591,121 @@ class MainWindow(Qt.QMainWindow):
             for j in range( 0, self.IMG_RES):           
                 x = self.bounds[0] + i * self.space_x
                 y = self.bounds[2] + j * self.space_y
-                gridPoints.InsertNextPoint ( x, y, 0)
-        
- 
+                gridPoints.InsertNextPoint ( x, y, 0)'''
     
 
     '''TODO: Complete this function to render LIC'''
     def generate_LIC(self):
         #(1) initialize the vtkImageDataLIC2D filter 
+        lic_filter = vtk.vtkImageDataLIC2D()
+        lic_filter.SetInputData(self.imageData)
         
         #(2) Define the step size, number of steps, and other necessary LIC parameters to ensure a sharp and distinct LIC texture. 
+        '''Step size is already relative to the cell width defined in the dataset!
+           The default value of 1.0 makes the steps match the cells in the specific dataset.'''
+        lic_filter.SetStepSize(0.5) # Default value is 1.0
+        lic_filter.SetSteps(30)     # Default value is 20
+        lic_filter.SetContext(self.vtkWidget.GetRenderWindow())
+        lic_filter.Update()
         
         #(3) Construct a lookup table with a grayscale color scheme to prevent unintended color mappings to LIC values. 
+        color_table = makeColorTable(256, gray_scale) # See functions defined below (like hw1)
         
-        #(4) Set up a vtkDatasetMapper, connecting it to both the dataset and the lookup table. 
+        #(4) Set up a vtkDatasetMapper, connecting it to both the dataset and the lookup table.
+        lic_mapper = vtk.vtkDataSetMapper()
+        lic_mapper.SetInputData(lic_filter.GetOutput())
+        lic_mapper.SetLookupTable(color_table)
+        lic_mapper.Update()
         
-        #(5) Establish an actor for the mapper. Adjust its opacity in relation to the LIC opacity slider, allowing the underlying color map to be discernible, and then return the actor. 
-        return None
+        #(5) Establish an actor for the mapper. Adjust its opacity in relation to the LIC opacity slider, allowing the underlying color map to be discernible, and then return the actor.
+        lic_actor = vtk.vtkActor()
+        lic_actor.SetMapper(lic_mapper)
+        opacity = self.LIC_opacity_slider.value() / 100.0
+        lic_actor.GetProperty().SetOpacity(opacity)
+        return lic_actor
     
     def on_LIC_checkbox(self):
-        if hasattr(self, 'lic_actor') and self.lic_actor is not None:
+        if hasattr(self, 'lic_actor'):
             self.ren.RemoveActor(self.lic_actor)   
         
         if self.LIC_checkbox.isChecked() == True:
             self.lic_actor = self.generate_LIC()
-            if self.lic_actor is not None:
-                self.ren.AddActor(self.lic_actor)
+            self.ren.AddActor(self.lic_actor)
 
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
      
 
-'''Add your own color scheme if you want'''
-def MakeLUT(colorScheme, lut):
-    # See: [Diverging Color Maps for Scientific Visualization]
-    #      (http:#www.kennethmoreland.com/color-maps/)
+'''Color table builder using easy custom color scales'''
+def makeColorTable(color_resolution, color_scale_fn): # [1, 3]
+    # Initialize color table
+    color_table = vtk.vtkLookupTable()
+    color_table.SetNumberOfTableValues(color_resolution)
     
-    nc = 256 #interpolate 256 values, increase this to get more colors
-    if colorScheme == 0:
-        ctf = vtk.vtkColorTransferFunction()
+    # Assign colors into table
+    for i in range(0, color_resolution):
+        # Get interpolated color
+        scale_key = float(i) / color_resolution
+        color = color_scale_fn(scale_key)
+        
+        # Append opacity information to the RGB color
+        opaque_color = color + [1.0]
+        
+        # Load the color in the table
+        color_table.SetTableValue(i, *opaque_color)
+        
+    # Build table
+    color_table.Build()
+    
+    return color_table
 
-        # Linear mapping from white to red
-        ctf.AddRGBPoint(0.0, 1.0, 1.0, 1.0)
-        ctf.AddRGBPoint(1.0, 1.0, 0.0, 0.0) 
-        
-        lut.SetNumberOfTableValues(nc)
-        lut.Build()
-        for i in range(0, nc):
-            rgb = list(ctf.GetColor(float(i) / nc))
-            rgb.append(1.0)  # appending alpha for RGBA
-            lut.SetTableValue(i, *rgb)
+''' Color scale functions '''
+import math
 
-    if colorScheme == 1: # white only
-        
-        rgb = [1.0, 1.0, 1.0]
-        
-        for i in range(0, nc):
-            s = float(i) / nc
-            lut.SetTableValue(i, rgb[0], rgb[1], rgb[2], 1.0)    
+def linear_interpolate(key_range, val_range, key):
+    key_range_width = key_range[1] - key_range[0]
+    key_relative_normal = (key - key_range[0]) / key_range_width
+    
+    val_range_width = val_range[1] - val_range[0]
+    return val_range[0] + key_relative_normal * val_range_width
+
+def linear_interpolate_color(key_range, start_color, end_color, key):
+    return [linear_interpolate(key_range, val_range, key)
+            for val_range in zip(start_color, end_color)]
+
+# colors should be a tuple of at least 2 elements
+def color_scale(colors, key):
+    # Locate which subrange the key is located in (for a scale with > 2 colors)
+    #  Assumes that subranges are equal width.
+    num_subranges = len(colors) - 1
+    subrange_index = math.floor(key * num_subranges) 
+            
+    # Select the interpolation colors based on the subrange location
+    start_color = colors[subrange_index]
+    end_color = colors[subrange_index + 1]
+    
+    # Extract the subrange boundaries based on the subrange location and default boundaries
+    subrange_width = 1.0 / num_subranges
+    key_range = [subrange_index * subrange_width, 
+                 (subrange_index + 1) * subrange_width]
+    
+    # Interpolate the color
+    color = linear_interpolate_color(key_range, start_color, end_color, key)
+    return color
+
+'''Custom color scales'''
+black = (0.0, 0.0, 0.0)
+red = (1.0, 0.0, 0.0)
+white = (1.0, 1.0, 1.0)
+
+def white_red_scale(key):
+    return color_scale([white, red], key)
+
+def gray_scale(key):
+    return color_scale([black, white], key)    
+
+def blank_scale(key):
+    return color_scale([white, white], key)
         
 if __name__ == "__main__":
     app = Qt.QApplication(sys.argv)
