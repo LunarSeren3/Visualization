@@ -593,8 +593,6 @@ class MainWindow(Qt.QMainWindow):
                 y = self.bounds[2] + j * self.space_y
                 gridPoints.InsertNextPoint ( x, y, 0)'''
     
-
-    '''TODO: Complete this function to render LIC'''
     def generate_LIC(self):
         #(1) initialize the vtkImageDataLIC2D filter 
         lic_filter = vtk.vtkImageDataLIC2D()
