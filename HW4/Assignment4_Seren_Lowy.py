@@ -1,7 +1,9 @@
 #!/usr/bin/python
 
 '''
-    Skeleton code for a GUI application created by using PyQT and PyVTK
+    Visualization assignment 4: 3D steady vector fields
+    Based on skeleton code from class
+    Seren Lowy (1449248)
 '''
 
 
@@ -110,7 +112,7 @@ class MainWindow(Qt.QMainWindow):
         self.qt_open_button.show()
         self.groupBox_layout.addWidget(self.qt_open_button)
         
-        
+        ''' Seren modified UI code for arrow options group '''
         ''' Add the widgets for arrow plot '''
         sample_groupbox = Qt.QGroupBox("Arrow Options")
         vbox_arrow = Qt.QVBoxLayout()  # New QVBoxLayout for all arrow items
@@ -129,7 +131,7 @@ class MainWindow(Qt.QMainWindow):
         hbox_arrowplot2.addWidget(arrowscaleLabel)
         self.arrow_scale = Qt.QDoubleSpinBox()
         self.arrow_scale.setValue(0.03)
-        self.arrow_scale.setRange(0, 1)
+        self.arrow_scale.setRange(0, 5)
         self.arrow_scale.setSingleStep(0.01)
         hbox_arrowplot2.addWidget(self.arrow_scale)
         
@@ -146,6 +148,7 @@ class MainWindow(Qt.QMainWindow):
         vbox_arrow.addLayout(hbox_arrowplot)
         vbox_arrow2.addLayout(hbox_arrowplot2)
         vbox_arrow2.addLayout(hbox_arrowplot3)
+        ''''''
         
         # Radio buttons for sampling options
         self.radio_all_points = Qt.QRadioButton("All grid points")
@@ -187,9 +190,9 @@ class MainWindow(Qt.QMainWindow):
         seedLabel = Qt.QLabel("    Set number of seeds:")
         hbox_streamline.addWidget(seedLabel)
         
-        self.number_seeds = Qt.QDoubleSpinBox()
+        self.number_seeds = Qt.QSpinBox()
         # set the initial values of some random parameters
-        self.number_seeds.setValue(10)
+        self.number_seeds.setValue(27)
         self.number_seeds.setRange(1, 2000)
         self.number_seeds.setSingleStep(1)
         hbox_streamline.addWidget(self.number_seeds)
@@ -197,8 +200,6 @@ class MainWindow(Qt.QMainWindow):
         streamline_hwidget.setLayout(hbox_streamline)
         vbox_streamline.addWidget(streamline_hwidget)
         
-        """
-        """
         hbox_streamline = Qt.QHBoxLayout()
         self.qt_pt_checkbox = Qt.QCheckBox("Show Seed Points ")
         self.qt_pt_checkbox.setChecked(False)
@@ -250,22 +251,22 @@ class MainWindow(Qt.QMainWindow):
         # Add radio buttons for the selection of the seed generation strategy
         self.line_rep_radio = Qt.QRadioButton("Line Representation")
         self.line_rep_radio.setChecked(True)
-        self.line_rep_radio.toggled.connect(self.on_seeding_strategy)
+        self.line_rep_radio.toggled.connect(self.on_represent_style)
         vbox_seed_strategy.addWidget(self.line_rep_radio)
         
         self.tube_rep_radio = Qt.QRadioButton("Tube Representation")
         self.tube_rep_radio.setChecked(False)
-        self.tube_rep_radio.toggled.connect(self.on_seeding_strategy)
+        self.tube_rep_radio.toggled.connect(self.on_represent_style)
         vbox_seed_strategy.addWidget(self.tube_rep_radio)
         
         self.ribbon_rep_radio = Qt.QRadioButton("Ribbon Representation")
         self.ribbon_rep_radio.setChecked(False)
-        self.ribbon_rep_radio.toggled.connect(self.on_seeding_strategy)
+        self.ribbon_rep_radio.toggled.connect(self.on_represent_style)
         vbox_seed_strategy.addWidget(self.ribbon_rep_radio)
         
         self.surface_rep_radio = Qt.QRadioButton("Surface Representation")
         self.surface_rep_radio.setChecked(False)
-        self.surface_rep_radio.toggled.connect(self.on_seeding_strategy)
+        self.surface_rep_radio.toggled.connect(self.on_represent_style)
         vbox_seed_strategy.addWidget(self.surface_rep_radio)
         self.rep_strategy = 0 # Uniform seeding is the default strategy 
         
@@ -336,8 +337,9 @@ class MainWindow(Qt.QMainWindow):
         self.ren.ResetCamera()
         self.vtkWidget.GetRenderWindow().Render()
 
-    
-    ''' TODO: Use the vtkArrowSource, vtkMaskPoints filter and vtkGlyph3D filter to show an arrow plot on a 3D volume'''
+    '''                         '''
+    ''' Question 2. Arrow Plot  '''
+    '''                         '''
     def on_arrow_checkbox_change(self, discard=False):
         if hasattr(self, 'arrow_actor'):
                 self.ren.RemoveActor(self.arrow_actor)
@@ -346,7 +348,6 @@ class MainWindow(Qt.QMainWindow):
             # Make sure we use the velocity field
             self.reader.GetOutput().GetPointData().SetActiveVectors("velocity")
 
-            '''Complete the arrow plot visualization here '''
             ''' Based on similar section from HW3 '''
             # Setup mask object
             densityFilter = vtk.vtkMaskPoints()
@@ -372,26 +373,27 @@ class MainWindow(Qt.QMainWindow):
                 # Connect glyph object to reader without density filter if we are not down sampling
                 glyph3D.SetInputData(self.reader.GetOutput())
                 
-            elif selected_id == -3:
-                print("Uniform Sample is selected.")
-                
+            else:
                 # Connect glyph object to density filter if we are down sampling
                 glyph3D.SetInputData(densityFilter.GetOutput())
-                
-                # Interface element for sampling rate? (^^^)
-                
-                
-                
-                # Use the UNIFORM_SPATIAL_BOUNDS random mode of 
-                #  the vtkMaskPoints filter
                 densityFilter.RandomModeOn()
-                densityFilter.SetRandomModeType(3)
                 
-            elif selected_id == -4:
-                print("Random Sample is selected.")
+                if selected_id == -3:
+                    print("Uniform Sample is selected.")
+                    
+                    # UNIFORM_SPATIAL_BOUNDS random mode
+                    densityFilter.SetRandomModeType(3)
                 
-            # Update density filter and glyph object after receiving input data
-            densityFilter.Update()
+                elif selected_id == -4:
+                    print("Random Sample is selected.")
+                    
+                    # RANDOM_SAMPLING random mode
+                    densityFilter.SetRandomModeType(1)
+                
+                # Update density filter 
+                densityFilter.Update()
+                
+            # Update glyph object after receiving input data
             glyph3D.Update()            
 
             # Mapper and actor
@@ -409,6 +411,11 @@ class MainWindow(Qt.QMainWindow):
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
 
+
+
+    '''                         '''
+    ''' Question 3. Streamlines '''
+    '''                         '''
             
     '''event handle for the radio buttons of seeding strategies
     '''
@@ -425,7 +432,11 @@ class MainWindow(Qt.QMainWindow):
             self.uniform_seed_radio.setChecked(False)
             self.random_seed_radio.setChecked(False)
             self.seeding_strategy = 2
+        
+        # Route event to checkbox_change event when done so streamline plot updates
+        self.on_streamline_checkbox_change()
             
+    def on_represent_style(self):
         if self.line_rep_radio.isChecked() == True:
             self.tube_rep_radio.setChecked(False)
             self.ribbon_rep_radio.setChecked(False)
@@ -447,21 +458,56 @@ class MainWindow(Qt.QMainWindow):
             self.tube_rep_radio.setChecked(False)
             self.line_rep_radio.setChecked(False)
             self.rep_strategy = 3
-        #print(self.seeding_strategy,self.rep_strategy)
+        
+        # Update streamline representation when radio button changes 
+        #  (if there are streamlines yet)
+        if hasattr(self, 'streamline_mapper'):
+            self.streamline_representation()
         
 
-   
-    '''         
-        TODO: Complete the following function for genenerate uniform seeds 
-        for streamline placement
-
-    '''
+    ''' Same as HW3 '''
+    #import math # Already imported above
+    
+    def map_positions_to_data_domain(self, normal_positions):
+        xmin, xmax, ymin, ymax, zmin, zmax = self.reader.GetOutput().GetBounds()
+        width = xmax - xmin
+        height = ymax - ymin
+        depth = zmax - zmin
+        
+        positions = [(xmin + np[0] * width, 
+                      ymin + np[1] * height,
+                      zmin + np[2] * depth) 
+                        for np in normal_positions]
+                        
+        return positions
+    
     def uniform_generate_seeds(self):
-        numb_seeds = int (self.number_seeds.value())
+        num_seeds = int (self.number_seeds.value())
         seedPoints = vtk.vtkPoints()     
 
-        #TODO ...
         
+        # Define parameters for a uniform grid
+        linear_dimension = int(num_seeds ** (1.0 / 3)) # Cube root
+        linear_dim_fraction = 1.0 / (linear_dimension + 1)
+        
+        # Generate uniform positions in normal space
+        normal_positions = []
+        for i in range(linear_dimension):
+            for j in range(linear_dimension):
+                for k in range(linear_dimension):
+                    x = (i + 1) * linear_dim_fraction
+                    y = (j + 1) * linear_dim_fraction
+                    z = (k + 1) * linear_dim_fraction
+                
+                    normal_positions += [(x, y, z)]
+        
+        # Map the normal space to the data domain
+        positions = self.map_positions_to_data_domain(normal_positions)
+                        
+        # Create seed points with the computed positions in data space
+        for pos in positions:
+            seedPoints.InsertNextPoint(pos[0], pos[1], pos[2])
+        ''''''
         
         
         # Need to put the seed points in a vtkPolyData object
@@ -469,17 +515,32 @@ class MainWindow(Qt.QMainWindow):
         seedPolyData.SetPoints(seedPoints)
         return seedPolyData
 
-    '''  
-        TODO: Complete the following function for genenerate random seeds 
-        for streamline placement
-    '''
+    ''' Same as HW3 '''
+    def random_roll(self):
+        random_resolution = 32768.0
+        return random.randint(0, int(random_resolution)) / random_resolution
+        
     def random_generate_seeds(self):
-        numb_seeds = int (self.number_seeds.value())
+        num_seeds = int(self.number_seeds.value())
         seedPoints = vtk.vtkPoints()     
 
-        #TODO ...
+        ''' Same as HW3 '''
+        # Generate the random positions in normal space
+        normal_positions = []
+        for _ in range(num_seeds):
+            x = self.random_roll()
+            y = self.random_roll()
+            z = self.random_roll()
+            
+            normal_positions += [(x, y, z)]
         
+        # Map the normal space to the data domain
+        positions = self.map_positions_to_data_domain(normal_positions)
         
+        # Create seed points with the computed positions in data space
+        for pos in positions:
+            seedPoints.InsertNextPoint(pos[0], pos[1], pos[2])
+        ''''''
         
         # Need to put the seed points in a vtkPolyData object
         seedPolyData = vtk.vtkPolyData()
@@ -510,7 +571,37 @@ class MainWindow(Qt.QMainWindow):
         TODO: Complete the following function to generate a set of streamlines
         from the above generated uniform or random seeds
     '''
+    def streamline_representation(self):
+        if self.rep_strategy == 0: 
+            print("line representation selected")
+            self.streamline_mapper.SetInputConnection(self.stream_tracer.GetOutputPort())
+        
+        elif self.rep_strategy == 1:
+            print("tube representation selected")
+            ''' Based on "Office Tube" example by Berk Geveci, Kitware, 2015
+            https://gitlab.kitware.com/vtk/vtk/blob/cff62a106f99c9bac3d1bc4a4e449d28b7d94285/Examples/VisualizationAlgorithms/Python/officeTube.py '''
+            tube_filter = vtk.vtkTubeFilter()
+            tube_filter.SetInputConnection(self.stream_tracer.GetOutputPort())
+            
+            tube_filter.SetInputArrayToProcess(1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "vectors")
+            tube_filter.SetRadius(0.02)
+            tube_filter.SetNumberOfSides(12)
+            tube_filter.SetVaryRadiusToVaryRadiusByVector()
+            
+            self.streamline_mapper.SetInputConnection(tube_filter.GetOutputPort())
+            
+        elif self.rep_strategy == 2:
+            print("ribbon representation selected")
+        elif self.rep_strategy == 3:
+            print("surface representation selected")
+            
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
+    
     def on_streamline_checkbox_change(self):
+        if hasattr(self, 'streamline_actor'):
+            self.ren.RemoveActor(self.streamline_actor)
+    
         if self.qt_streamline_checkbox.isChecked() == True:
             # Step 1: Create seeding points 
             if self.seeding_strategy == 1: 
@@ -524,31 +615,42 @@ class MainWindow(Qt.QMainWindow):
                     #seedPolyData = self.generate_seeding_line()
                 #note that you will receive point deductions for non-interactivity
                 pass
-            
-            if self.rep_strategy == 0: 
-                print("line representation selected")
-            elif self.rep_strategy == 1:
-                print("tube representation selected")
-            elif self.rep_strategy == 2:
-                print("ribbon representation selected")
-            elif self.rep_strategy == 3:
-                print("surface representation selected")
                 
+            # Step 2: Render the seed point markers
+            ''' TODO draw spheres at the seed point locations '''
             
-            # Step 2: Create a vtkStreamTracer object, set input data and seeding points
-           
+            # Step 3: Create a vtkStreamTracer object, set input data and seeding points
+            ''' Like hw3 '''
+            self.stream_tracer = vtk.vtkStreamTracer()
+            self.stream_tracer.SetInputData(self.reader.GetOutput()) # set vector field
+            self.stream_tracer.SetSourceData(seedPolyData) # pass in the seeds
+            
 
-            # Step 3: Set the parameters. 
+            # Step 4: Set the parameters for streamline tracing. 
             # Check the reference https://vtk.org/doc/nightly/html/classvtkStreamTracer.html
             # to have the full list of parameters
+            self.stream_tracer.SetIntegratorTypeToRungeKutta45()
+            self.stream_tracer.SetIntegrationDirectionToBoth()
             
-        
-        
-        # Turn on the following if you want to disable the streamline visualization
-        # But again you need to modify the "streamline_actor" name based on what you use!!!
-        #else:
-        #    self.ren.RemoveActor(self.streamline_actor)
-        
+            '''Make integration step 2x finer'''
+            init_integrate_step = self.stream_tracer.GetInitialIntegrationStep()
+            min_integrate_step = self.stream_tracer.GetMinimumIntegrationStep()
+            max_integrate_step = self.stream_tracer.GetMaximumIntegrationStep()
+            self.stream_tracer.SetInitialIntegrationStep(init_integrate_step / 2.0)
+            self.stream_tracer.SetMinimumIntegrationStep(min_integrate_step / 2.0)
+            self.stream_tracer.SetMaximumIntegrationStep(max_integrate_step / 2.0)
+            
+            # Step 5: Map the streamlines to polygon data
+            self.streamline_mapper = vtk.vtkPolyDataMapper()
+            self.streamline_mapper.ScalarVisibilityOff()
+            
+            self.streamline_representation()
+            
+            # Add the actor for streamlines to the scene
+            self.streamline_actor = vtk.vtkActor()
+            self.streamline_actor.SetMapper(self.streamline_mapper)
+            self.streamline_actor.GetProperty().SetColor(0,0.7,1)
+            self.ren.AddActor(self.streamline_actor)
            
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()       
