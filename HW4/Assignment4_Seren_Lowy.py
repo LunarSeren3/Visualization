@@ -141,7 +141,7 @@ class MainWindow(Qt.QMainWindow):
         hbox_arrowplot3.addWidget(sampleRateLabel)
         self.sample_rate = Qt.QSpinBox()
         self.sample_rate.setRange(100, 50000)
-        self.sample_rate.setValue(50000)
+        self.sample_rate.setValue(2000)
         self.sample_rate.setSingleStep(100)
         hbox_arrowplot3.addWidget(self.sample_rate)
         
@@ -176,54 +176,95 @@ class MainWindow(Qt.QMainWindow):
         ''' Create a new QGroupBox for streamline options '''
         streamline_groupbox = Qt.QGroupBox("Streamline Options")
         vbox_streamline = Qt.QVBoxLayout()
+        vbox_streamline_checkboxes = Qt.QVBoxLayout()
+        vbox_streamline_spinboxes = Qt.QVBoxLayout()
         
-        self.qt_pt_checkbox = Qt.QCheckBox("Show Seed Pts")
-        self.qt_pt_checkbox.setChecked(False)
-        self.qt_pt_checkbox.toggled.connect(self.on_streamline_checkbox_change)
-        
-        hbox_streamline = Qt.QHBoxLayout()
-        self.qt_streamline_checkbox = Qt.QCheckBox("Streamline ")
+        ## Basic controls subgroup
+        # Show/hide streamline
+        self.qt_streamline_checkbox = Qt.QCheckBox("Streamline")
         self.qt_streamline_checkbox.setChecked(False)
         self.qt_streamline_checkbox.toggled.connect(self.on_streamline_checkbox_change)
-        hbox_streamline.addWidget(self.qt_streamline_checkbox) 
+        vbox_streamline_checkboxes.addWidget(self.qt_streamline_checkbox) 
 
-        seedLabel = Qt.QLabel("    Set number of seeds:")
-        hbox_streamline.addWidget(seedLabel)
+        hbox_num_seeds = Qt.QHBoxLayout()
+        seed_num_label = Qt.QLabel("Set number of seeds:")
+        hbox_num_seeds.addWidget(seed_num_label)
         
         self.number_seeds = Qt.QSpinBox()
-        # set the initial values of some random parameters
         self.number_seeds.setValue(27)
         self.number_seeds.setRange(1, 2000)
         self.number_seeds.setSingleStep(1)
-        hbox_streamline.addWidget(self.number_seeds)
-        streamline_hwidget = Qt.QWidget()
-        streamline_hwidget.setLayout(hbox_streamline)
-        vbox_streamline.addWidget(streamline_hwidget)
+        hbox_num_seeds.addWidget(self.number_seeds)
+        num_seeds_hwidget = Qt.QWidget()
+        num_seeds_hwidget.setLayout(hbox_num_seeds)
+        vbox_streamline_spinboxes.addWidget(num_seeds_hwidget)
         
-        hbox_streamline = Qt.QHBoxLayout()
-        self.qt_pt_checkbox = Qt.QCheckBox("Show Seed Points ")
+        # Set number of integration steps
+        hbox_propagation = Qt.QHBoxLayout()
+        propagation_label = Qt.QLabel("Set max travel distance:")
+        hbox_propagation.addWidget(propagation_label)
+        
+        self.streamline_propagation = Qt.QDoubleSpinBox()
+        self.streamline_propagation.setRange(0.1, 100)
+        self.streamline_propagation.setValue(1.0)
+        self.streamline_propagation.setSingleStep(0.1)
+        hbox_propagation.addWidget(self.streamline_propagation)
+        propagation_hwidget = Qt.QWidget()
+        propagation_hwidget.setLayout(hbox_propagation)
+        vbox_streamline_spinboxes.addWidget(propagation_hwidget)
+        
+        # Set streamline width (for tube/ribbon representation)
+        hbox_line_width = Qt.QHBoxLayout()
+        line_width_label = Qt.QLabel("Set width of line (for tube/ribbon):")
+        hbox_line_width.addWidget(line_width_label)
+        
+        self.streamline_width = Qt.QDoubleSpinBox()
+        self.streamline_width.setRange(0.01, 10.00)
+        self.streamline_width.setValue(0.02)
+        self.streamline_width.setSingleStep(0.01)
+        hbox_line_width.addWidget(self.streamline_width)
+        width_hwidget = Qt.QWidget()
+        width_hwidget.setLayout(hbox_line_width)
+        vbox_streamline_spinboxes.addWidget(width_hwidget)
+        
+        # Show/hide sphere markers at seed points
+        self.qt_pt_checkbox = Qt.QCheckBox("Show Seed Points")
         self.qt_pt_checkbox.setChecked(False)
         self.qt_pt_checkbox.toggled.connect(self.on_represent_style)
-        hbox_streamline.addWidget(self.qt_pt_checkbox) 
+        vbox_streamline_checkboxes.addWidget(self.qt_pt_checkbox) 
 
-        seedLabel = Qt.QLabel("    Seed pt radius:")
-        hbox_streamline.addWidget(seedLabel)
+        # Set sphere marker radius
+        hbox_seed_radius = Qt.QHBoxLayout()
+        seed_radius_label = Qt.QLabel("Seed pt radius:")
+        hbox_seed_radius.addWidget(seed_radius_label)
         
         self.radius_seeds = Qt.QDoubleSpinBox()
-        # set the initial values of some random parameters
+        self.radius_seeds.setRange(0.01, 10.00)
         self.radius_seeds.setValue(0.06)
-        self.radius_seeds.setRange(0.001, 100)
-        self.radius_seeds.setSingleStep(0.1)
-        hbox_streamline.addWidget(self.radius_seeds)
-        streamline_hwidget = Qt.QWidget()
-        streamline_hwidget.setLayout(hbox_streamline)
-        vbox_streamline.addWidget(streamline_hwidget)
+        self.radius_seeds.setSingleStep(0.01)
+        hbox_seed_radius.addWidget(self.radius_seeds)
+        seed_radius_hwidget = Qt.QWidget()
+        seed_radius_hwidget.setLayout(hbox_seed_radius)
+        vbox_streamline_spinboxes.addWidget(seed_radius_hwidget)
         
+        # Assemble subgroup for basic streamline controls
+        hbox_streamline_basic_controls = Qt.QHBoxLayout()
+        streamline_checkboxes_vwidget = Qt.QWidget()
+        streamline_checkboxes_vwidget.setLayout(vbox_streamline_checkboxes)
+        streamline_spinboxes_vwidget = Qt.QWidget()
+        streamline_spinboxes_vwidget.setLayout(vbox_streamline_spinboxes)
+        hbox_streamline_basic_controls.addWidget(streamline_checkboxes_vwidget)
+        hbox_streamline_basic_controls.addWidget(streamline_spinboxes_vwidget)
+        streamline_basic_controls_hwidget = Qt.QWidget()
+        streamline_basic_controls_hwidget.setLayout(hbox_streamline_basic_controls)
+        vbox_streamline.addWidget(streamline_basic_controls_hwidget)
+        
+        ## Seed strategy subgroup
         vbox_seed_strategy = Qt.QVBoxLayout()
         l=Qt.QLabel("Select streamline seeding strategy")
         vbox_seed_strategy.addWidget(l)
         
-        # Add radio buttons for the selection of the seed generation strategy
+        # Add radio buttons for the seed generation strategy
         self.uniform_seed_radio = Qt.QRadioButton("Uniform Seeding")
         self.uniform_seed_radio.setChecked(True)
         self.uniform_seed_radio.toggled.connect(self.on_seeding_strategy)
@@ -244,35 +285,36 @@ class MainWindow(Qt.QMainWindow):
         seedingstrategy.setLayout(vbox_seed_strategy)
         vbox_streamline.addWidget(seedingstrategy)
         
-        vbox_seed_strategy = Qt.QVBoxLayout()
+        ## Line style subgroup
+        vbox_line_style = Qt.QVBoxLayout()
         l=Qt.QLabel("Select streamline rendering representation strategy")
-        vbox_seed_strategy.addWidget(l)
+        vbox_line_style.addWidget(l)
         
-        # Add radio buttons for the selection of the seed generation strategy
+        # Add radio buttons for the streamline style
         self.line_rep_radio = Qt.QRadioButton("Line Representation")
         self.line_rep_radio.setChecked(True)
         self.line_rep_radio.toggled.connect(self.on_represent_style)
-        vbox_seed_strategy.addWidget(self.line_rep_radio)
+        vbox_line_style.addWidget(self.line_rep_radio)
         
         self.tube_rep_radio = Qt.QRadioButton("Tube Representation")
         self.tube_rep_radio.setChecked(False)
         self.tube_rep_radio.toggled.connect(self.on_represent_style)
-        vbox_seed_strategy.addWidget(self.tube_rep_radio)
+        vbox_line_style.addWidget(self.tube_rep_radio)
         
         self.ribbon_rep_radio = Qt.QRadioButton("Ribbon Representation")
         self.ribbon_rep_radio.setChecked(False)
         self.ribbon_rep_radio.toggled.connect(self.on_represent_style)
-        vbox_seed_strategy.addWidget(self.ribbon_rep_radio)
+        vbox_line_style.addWidget(self.ribbon_rep_radio)
         
         self.surface_rep_radio = Qt.QRadioButton("Surface Representation")
         self.surface_rep_radio.setChecked(False)
         self.surface_rep_radio.toggled.connect(self.on_represent_style)
-        vbox_seed_strategy.addWidget(self.surface_rep_radio)
+        vbox_line_style.addWidget(self.surface_rep_radio)
         self.rep_strategy = 0 # Uniform seeding is the default strategy 
         
-        seedingstrategy = Qt.QWidget()
-        seedingstrategy.setLayout(vbox_seed_strategy)
-        vbox_streamline.addWidget(seedingstrategy)
+        line_style_vwidget = Qt.QWidget()
+        line_style_vwidget.setLayout(vbox_line_style)
+        vbox_streamline.addWidget(line_style_vwidget)
         
         streamline_groupbox.setLayout(vbox_streamline)
         self.groupBox_layout.addWidget(streamline_groupbox)
@@ -570,10 +612,6 @@ class MainWindow(Qt.QMainWindow):
         pass
 
         
-    ''' 
-        TODO: Complete the following function to generate a set of streamlines
-        from the above generated uniform or random seeds
-    '''
     def seed_point_representation(self):
         if hasattr(self, 'sphere_actor'):
                 self.ren.RemoveActor(self.sphere_actor)
@@ -615,7 +653,7 @@ class MainWindow(Qt.QMainWindow):
             tube_filter.SetInputConnection(self.stream_tracer.GetOutputPort())
             
             tube_filter.SetInputArrayToProcess(1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "vectors")
-            tube_filter.SetRadius(0.02)
+            tube_filter.SetRadius(self.streamline_width.value())
             tube_filter.SetNumberOfSides(12)
             tube_filter.SetVaryRadiusToVaryRadiusByVector()
             
@@ -627,11 +665,14 @@ class MainWindow(Qt.QMainWindow):
             ribbon_filter.SetInputConnection(self.stream_tracer.GetOutputPort())
             ribbon_filter.UseDefaultNormalOn()
             ribbon_filter.SetInputArrayToProcess(1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "vectors")
-            ribbon_filter.SetWidth(0.02)
+            ribbon_filter.SetWidth(self.streamline_width.value())
             
             self.streamline_mapper.SetInputConnection(ribbon_filter.GetOutputPort())
             
         elif self.rep_strategy == 3:
+            ''' 
+            TODO: Complete the following function to generate a stream surface
+            '''
             print("surface representation selected")
             
         # Re-render the screen
@@ -658,26 +699,27 @@ class MainWindow(Qt.QMainWindow):
             # Step 2: Render the seed point markers
             self.seed_point_representation()
             
-            # Step 3: Create a vtkStreamTracer object, set input data and seeding points
-            ''' Like hw3 '''
-            self.stream_tracer = vtk.vtkStreamTracer()
-            self.stream_tracer.SetInputData(self.reader.GetOutput()) # set vector field
-            self.stream_tracer.SetSourceData(self.seedPolyData) # pass in the seeds
-            
-
-            # Step 4: Set the parameters for streamline tracing. 
+            # Step 3: Create a vtkStreamTracer object, set the parameters for streamline tracing. 
             # Check the reference https://vtk.org/doc/nightly/html/classvtkStreamTracer.html
             # to have the full list of parameters
+            self.stream_tracer = vtk.vtkStreamTracer()
             self.stream_tracer.SetIntegratorTypeToRungeKutta45()
             self.stream_tracer.SetIntegrationDirectionToBoth()
             
-            '''Make integration step 2x finer'''
+            #Make integration step 2x finer
             init_integrate_step = self.stream_tracer.GetInitialIntegrationStep()
             min_integrate_step = self.stream_tracer.GetMinimumIntegrationStep()
             max_integrate_step = self.stream_tracer.GetMaximumIntegrationStep()
             self.stream_tracer.SetInitialIntegrationStep(init_integrate_step / 2.0)
             self.stream_tracer.SetMinimumIntegrationStep(min_integrate_step / 2.0)
             self.stream_tracer.SetMaximumIntegrationStep(max_integrate_step / 2.0)
+            
+            #Set maximum length of streamline
+            self.stream_tracer.SetMaximumPropagation(self.streamline_propagation.value())
+            
+            # Step 4: Load the vector field and seed points
+            self.stream_tracer.SetInputData(self.reader.GetOutput()) # set vector field
+            self.stream_tracer.SetSourceData(self.seedPolyData) # pass in the seeds
             
             # Step 5: Map the streamlines to polygon data
             self.streamline_mapper = vtk.vtkPolyDataMapper()
