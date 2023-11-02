@@ -592,24 +592,35 @@ class MainWindow(Qt.QMainWindow):
         seedPolyData.SetPoints(seedPoints)
         return seedPolyData
     
-    
-    '''  
-        TODO: Complete the following function to create the seeding line widget
-        for streamline placement
-        NOTE: This is the most difficult task in the assignment!
-        If you cannot figure out how to create an interactive line widget, then simply implement streamline seeding between two points (place seed points along a line formed by two points in the data set)
-    '''
+    ''' Based on https://examples.vtk.org/site/Python/VisualizationAlgorithms/StreamlinesWithLineWidget/'''
     def generate_seeding_line(self):
-        return None
-
-
-    '''  
-        TODO: Complete the following function to create the interactive seeding line widget (Check the line widget documentation page on how to define and use this callback)
-        NOTE: This is the most difficult task in the assignment!
-        If you cannot figure out how to create an interactive line widget, then skip this callback implementation
-    '''
+        self.line_widget = vtk.vtkLineWidget()
+        self.line_widget.SetResolution(self.number_seeds.value() - 1)
+        self.line_widget.SetInputData(self.reader.GetOutput())
+        self.line_widget.SetAlignToYAxis()
+        self.line_widget.ClampToBoundsOn()
+        self.line_widget.PlaceWidget()
+        self.line_widget.SetInteractor(self.iren)
+        self.line_widget.AddObserver("EndInteractionEvent", self.GenerateStreamlinesCallBack)
+        
+        self.line_widget.On()
+        
+        seedPoints = vtk.vtkPolyData()
+        self.line_widget.GetPolyData(seedPoints)
+        return seedPoints
+        
     def GenerateStreamlinesCallBack(self, obj, event):
-        pass
+        self.line_widget.GetPolyData(self.seedPolyData)
+        # Update parameters
+        self.stream_tracer.SetMaximumPropagation(self.streamline_propagation.value())
+        self.streamline_representation()
+        self.seed_point_representation()
+        
+        # Update mapper
+        self.streamline_mapper.Update()
+        
+        # Re-render the screen
+        self.vtkWidget.GetRenderWindow().Render()
 
         
     def seed_point_representation(self):
@@ -681,20 +692,20 @@ class MainWindow(Qt.QMainWindow):
     def on_streamline_checkbox_change(self):
         if hasattr(self, 'streamline_actor'):
             self.ren.RemoveActor(self.streamline_actor)
+            
+        # Remove previous line widget
+            if hasattr(self, 'line_widget'):
+                self.line_widget.Off()
     
         if self.qt_streamline_checkbox.isChecked() == True:
-            # Step 1: Create seeding points 
+            # Step 1: Create seeding points
             if self.seeding_strategy == 1: 
                 self.seedPolyData = self.random_generate_seeds() # You also can try generate_seeding_line()
             elif self.seeding_strategy == 0:
                 self.seedPolyData = self.uniform_generate_seeds()
-            elif self.seeding_strategy == 2:
-                #You need a custom implementation for the interactive line widget
-                #Again, if you cannot get the interactive part of this task then implement a static line seeding strategy that places seed point along a diagonal line (or horizontal/vertical line works too) across the data set
-                #Example of this static implementation: 
-                    #self.seedPolyData = self.generate_seeding_line()
-                #note that you will receive point deductions for non-interactivity
-                pass
+            elif self.seeding_strategy == 2:                
+                self.seedPolyData = self.generate_seeding_line()
+                
                 
             # Step 2: Render the seed point markers
             self.seed_point_representation()
