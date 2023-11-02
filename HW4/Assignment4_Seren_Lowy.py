@@ -203,7 +203,7 @@ class MainWindow(Qt.QMainWindow):
         hbox_streamline = Qt.QHBoxLayout()
         self.qt_pt_checkbox = Qt.QCheckBox("Show Seed Points ")
         self.qt_pt_checkbox.setChecked(False)
-        self.qt_pt_checkbox.toggled.connect(self.on_streamline_checkbox_change)
+        self.qt_pt_checkbox.toggled.connect(self.on_represent_style)
         hbox_streamline.addWidget(self.qt_pt_checkbox) 
 
         seedLabel = Qt.QLabel("    Seed pt radius:")
@@ -458,6 +458,9 @@ class MainWindow(Qt.QMainWindow):
             self.tube_rep_radio.setChecked(False)
             self.line_rep_radio.setChecked(False)
             self.rep_strategy = 3
+            
+        if hasattr(self, 'seedPolyData'):
+            self.seed_point_representation()
         
         # Update streamline representation when radio button changes 
         #  (if there are streamlines yet)
@@ -571,6 +574,34 @@ class MainWindow(Qt.QMainWindow):
         TODO: Complete the following function to generate a set of streamlines
         from the above generated uniform or random seeds
     '''
+    def seed_point_representation(self):
+        if hasattr(self, 'sphere_actor'):
+                self.ren.RemoveActor(self.sphere_actor)
+                
+        if self.qt_pt_checkbox.isChecked() == True:
+            sphereSource = vtk.vtkSphereSource()
+            
+            glyph3D = vtk.vtkGlyph3D()
+            glyph3D.SetSourceConnection(sphereSource.GetOutputPort())
+            glyph3D.OrientOn()
+            
+            glyph3D.SetInputData(self.seedPolyData)
+            glyph3D.SetScaleFactor(self.radius_seeds.value())
+            
+            glyph3D.Update()            
+
+            # Mapper and actor
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(glyph3D.GetOutputPort())
+            sphere_mapper.ScalarVisibilityOff()
+            sphere_mapper.Update()
+
+            self.sphere_actor = vtk.vtkActor()
+            self.sphere_actor.SetMapper(sphere_mapper)
+            self.sphere_actor.GetProperty().SetColor(0.5,1.0,0.0) # set the color you want
+            
+            self.ren.AddActor(self.sphere_actor)
+    
     def streamline_representation(self):
         if self.rep_strategy == 0: 
             print("line representation selected")
@@ -605,25 +636,25 @@ class MainWindow(Qt.QMainWindow):
         if self.qt_streamline_checkbox.isChecked() == True:
             # Step 1: Create seeding points 
             if self.seeding_strategy == 1: 
-                seedPolyData = self.random_generate_seeds() # You also can try generate_seeding_line()
+                self.seedPolyData = self.random_generate_seeds() # You also can try generate_seeding_line()
             elif self.seeding_strategy == 0:
-                seedPolyData = self.uniform_generate_seeds()
+                self.seedPolyData = self.uniform_generate_seeds()
             elif self.seeding_strategy == 2:
                 #You need a custom implementation for the interactive line widget
                 #Again, if you cannot get the interactive part of this task then implement a static line seeding strategy that places seed point along a diagonal line (or horizontal/vertical line works too) across the data set
                 #Example of this static implementation: 
-                    #seedPolyData = self.generate_seeding_line()
+                    #self.seedPolyData = self.generate_seeding_line()
                 #note that you will receive point deductions for non-interactivity
                 pass
                 
             # Step 2: Render the seed point markers
-            ''' TODO draw spheres at the seed point locations '''
+            self.seed_point_representation()
             
             # Step 3: Create a vtkStreamTracer object, set input data and seeding points
             ''' Like hw3 '''
             self.stream_tracer = vtk.vtkStreamTracer()
             self.stream_tracer.SetInputData(self.reader.GetOutput()) # set vector field
-            self.stream_tracer.SetSourceData(seedPolyData) # pass in the seeds
+            self.stream_tracer.SetSourceData(self.seedPolyData) # pass in the seeds
             
 
             # Step 4: Set the parameters for streamline tracing. 
@@ -654,24 +685,6 @@ class MainWindow(Qt.QMainWindow):
            
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()       
-                
- 
-    ''' This function generates a uniform grid for the input data, use it for your uniform streamline seeding
-        You can also learn how to map seed point locations for the random seed strategy too! '''
-    def generate_uniform_grid(self):
-        self.bounds = self.reader.GetBounds()
-        
-        #Create a uniform grid of points to interpolate over
-        gridPoints = vtk.vtkPoints()
-        
-        self.space_x = (self.bounds[1]-self.bounds[0])/(self.IMG_RES-1)
-        self.space_y = (self.bounds[3]-self.bounds[2])/(self.IMG_RES-1)
-        self.space_z = 0
-        for i in range( 0, self.IMG_RES):   
-            for j in range( 0, self.IMG_RES):           
-                x = self.bounds[0] + i * self.space_x
-                y = self.bounds[2] + j * self.space_y
-                gridPoints.InsertNextPoint ( x, y, 0)
         
 if __name__ == "__main__":
     app = Qt.QApplication(sys.argv)
