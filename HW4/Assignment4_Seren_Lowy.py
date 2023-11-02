@@ -623,6 +623,14 @@ class MainWindow(Qt.QMainWindow):
             
         elif self.rep_strategy == 2:
             print("ribbon representation selected")
+            ribbon_filter = vtk.vtkRibbonFilter()
+            ribbon_filter.SetInputConnection(self.stream_tracer.GetOutputPort())
+            ribbon_filter.UseDefaultNormalOn()
+            ribbon_filter.SetInputArrayToProcess(1, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "vectors")
+            ribbon_filter.SetWidth(0.02)
+            
+            self.streamline_mapper.SetInputConnection(ribbon_filter.GetOutputPort())
+            
         elif self.rep_strategy == 3:
             print("surface representation selected")
             
