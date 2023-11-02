@@ -2,7 +2,7 @@
 
 '''
     Visualization assignment 4: 3D steady vector fields
-    Based on skeleton code from class
+    Based on skeleton code from class, etc. (see web links below)
     Seren Lowy (1449248)
 '''
 
@@ -331,7 +331,6 @@ class MainWindow(Qt.QMainWindow):
             self.qt_file_name.setText(filenames[0])
     
     def open_vtk_file(self):
-       
         '''Read and verify the vtk input file '''
         input_file_name = self.qt_file_name.text()
 
@@ -342,9 +341,7 @@ class MainWindow(Qt.QMainWindow):
     
         self.reader = original_reader
             
-
         # Some initialization to remove actors that are created previously
-
         if hasattr(self, 'outline'):
             self.ren.RemoveActor(self.outline)
 
@@ -356,6 +353,9 @@ class MainWindow(Qt.QMainWindow):
 
         if hasattr(self, 'streamline_actor'):
            self.ren.RemoveActor(self.streamline_actor)
+           
+        if hasattr(self, 'line_widget'):
+            self.line_widget.Off()
 
         self.seeding_strategy = 0  # Uniform seeding is the default strategy
 
@@ -375,9 +375,10 @@ class MainWindow(Qt.QMainWindow):
 
         self.ren.AddActor(self.outline)
         
-        
         self.ren.ResetCamera()
         self.vtkWidget.GetRenderWindow().Render()
+        
+        
 
     '''                         '''
     ''' Question 2. Arrow Plot  '''
@@ -455,9 +456,9 @@ class MainWindow(Qt.QMainWindow):
 
 
 
-    '''                         '''
-    ''' Question 3. Streamlines '''
-    '''                         '''
+    '''                                                 '''
+    ''' Question 3~4. Streamlines and stream surfaces   '''
+    '''                                                 '''
             
     '''event handle for the radio buttons of seeding strategies
     '''
@@ -625,7 +626,7 @@ class MainWindow(Qt.QMainWindow):
         
     def seed_point_representation(self):
         if hasattr(self, 'sphere_actor'):
-                self.ren.RemoveActor(self.sphere_actor)
+            self.ren.RemoveActor(self.sphere_actor)
                 
         if self.qt_pt_checkbox.isChecked() == True:
             sphereSource = vtk.vtkSphereSource()
@@ -681,10 +682,15 @@ class MainWindow(Qt.QMainWindow):
             self.streamline_mapper.SetInputConnection(ribbon_filter.GetOutputPort())
             
         elif self.rep_strategy == 3:
-            ''' 
-            TODO: Complete the following function to generate a stream surface
-            '''
+            ''' Based on https://github.com/wildmichael/ParaView/blob/master/VTK/Examples/VisualizationAlgorithms/Python/streamSurface.py '''
             print("surface representation selected")
+            surface_filter = vtk.vtkRuledSurfaceFilter()
+            surface_filter.SetInputConnection(self.stream_tracer.GetOutputPort())
+            surface_filter.SetOffset(0)
+            surface_filter.PassLinesOn()
+            surface_filter.SetRuledModeToPointWalk()
+            surface_filter.SetDistanceFactor(30)
+            self.streamline_mapper.SetInputConnection(surface_filter.GetOutputPort())
             
         # Re-render the screen
         self.vtkWidget.GetRenderWindow().Render()
@@ -694,8 +700,8 @@ class MainWindow(Qt.QMainWindow):
             self.ren.RemoveActor(self.streamline_actor)
             
         # Remove previous line widget
-            if hasattr(self, 'line_widget'):
-                self.line_widget.Off()
+        if hasattr(self, 'line_widget'):
+            self.line_widget.Off()
     
         if self.qt_streamline_checkbox.isChecked() == True:
             # Step 1: Create seeding points
