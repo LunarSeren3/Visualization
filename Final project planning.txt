@@ -1,0 +1,41 @@
+## Band depth ##
+Measure of centrality, of a function among an ensemble of functions.
+
+Ensemble of n functions, Band depth of degree j is:
+Probability that the function will be enclosed within a band formed by j many randomly selected other functions from the ensemble.
+The functions considered are the visible portions of functions in a given graphical view of the ensemble.
+
+* Inclusion in band:
+g(x) ⊂ B(f_1(x), ... , f_j(x)) ⇔ 
+{∀x ∈ D: 
+min[k=1,··· , j]f_k(x) ≤ g(x) ≤ max[k=1,··· , j] f_k(x)}.
+
+"a function g(x) is in the band formed by functions f_1 through f_j(x)
+means that
+for all x in the windowed domain, the minimum of the values of functions f_1 through f_j at x is less or equal than the value of g at x and the maximum of the values of functions f_1 through f_j is greater or equal than the value of g at x."
+
+* Band depth of degree j:
+BD_j(g(x)) = Prob[g(x)⊂B(f_i_1(x), · · · , f_i_j(x))], 1≤ i_1 ≤ · · · , ≤ i_j ≤ n
+
+"The probability that g is in the band formed by j many randomly selected functions from the ensemble."
+
+"Is in band: ⊂ B" is a binary random variable. Prob[] is a fraction of the possible
+j-degree bands that g(x) is "in the band".
+
+* Robust band depth of order J:
+The sum of band depths of degree j where j iterates from 2 to J.
+BD_J(g(x) =Σ[j=2, J] BD_j(g(x))
+
+* Modified ("Fuzzy") band depth:  not restricted to binary band depth.
+Fuzzy_Inclusion(g, B) = ?
+"Portion of the domain where the value of g at x is between the min and max values of the band functions at x"
+FBD_j(g(x)) = Σ(Fuzzy_Inclusion(g, B))
+
+
+## Generalization of Band Depth for Multivariate Curves ##
+Express multivariate functions by parametrization.
+
+* We define the band in multiple output dimensions using convex hull.
+Convex hull of points in the codomain (multivariate values of the functions) at the same value of s <parameter> in the domain.
+
+To define a convex hull, we need to start at degree d+1 for bands, where d is the number of dimensions of the output. For a single-output function g(x) → y, we need only two functions to form a band. For a 2D value function g(t) → (x, y) a curve traced in a 2D plane, we need a minimum of 3 degree band. The convex hull is shaped like a simplex (triangle, tetrahedron, five-cell simplex, etc.)
