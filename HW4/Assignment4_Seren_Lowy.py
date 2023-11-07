@@ -204,10 +204,10 @@ class MainWindow(Qt.QMainWindow):
         propagation_label = Qt.QLabel("Set max travel distance:")
         hbox_propagation.addWidget(propagation_label)
         
-        self.streamline_propagation = Qt.QDoubleSpinBox()
-        self.streamline_propagation.setRange(0.1, 100)
-        self.streamline_propagation.setValue(1.0)
-        self.streamline_propagation.setSingleStep(0.1)
+        self.streamline_propagation = Qt.QSpinBox()
+        self.streamline_propagation.setRange(1, 500)
+        self.streamline_propagation.setValue(1)
+        self.streamline_propagation.setSingleStep(1)
         hbox_propagation.addWidget(self.streamline_propagation)
         propagation_hwidget = Qt.QWidget()
         propagation_hwidget.setLayout(hbox_propagation)
@@ -748,6 +748,7 @@ class MainWindow(Qt.QMainWindow):
             self.streamline_actor = vtk.vtkActor()
             self.streamline_actor.SetMapper(self.streamline_mapper)
             self.streamline_actor.GetProperty().SetColor(0,0.7,1)
+                
             self.ren.AddActor(self.streamline_actor)
            
         # Re-render the screen
